@@ -3,7 +3,7 @@ import React from "react";
 import Image from "next/image";
 export default function Navbar(): React.ReactElement {
 	return (
-		<nav className="w-full border-b border-gray-200 dark:border-gray-800 h-40 flex items-center">
+		<nav className="w-full border-b border-gray-800 h-40 flex items-center">
 			<div className="max-w-6xl mx-auto px-4">
 				<div className="grid grid-cols-3 items-center py-4">
 					{/* Left links */}

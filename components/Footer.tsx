@@ -3,7 +3,7 @@ import React from "react";
 
 export default function Footer(): React.ReactElement {
   return (
-    <footer className="w-full border-t border-gray-200 dark:border-gray-800 py-6">
+    <footer className="w-full border-t border-gray-800 py-6">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex gap-6 items-center">
