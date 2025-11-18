@@ -115,7 +115,7 @@ const styles: Record<string, React.CSSProperties> = {
         display: "grid",
         /* Use fixed minimum card widths and center the whole grid so rows with fewer
            than the max columns will be centered rather than stretched. */
-        gridTemplateColumns: "repeat(auto-fit, minmax(120px, 100px))",
+        gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
         gap: "1.25rem",
         alignItems: "start",
         justifyContent: "center",
@@ -129,8 +129,8 @@ const styles: Record<string, React.CSSProperties> = {
         textAlign: "center",
     },
     photoWrap: {
-        width: 120,
-        height: 120,
+        width: 160,
+        height: 160,
         borderRadius: "999px",
         overflow: "hidden",
         margin: "0 auto 0.85rem",
@@ -179,7 +179,7 @@ export default function TeamPage(): React.ReactElement {
                         {sec.members.map((m) => (
                             <div key={m.name} style={styles.card}>
                                 <div style={styles.photoWrap}>
-                                    <Image src={m.imgSrc ?? placeholder} alt={m.name} width={248} height={120} style={{ objectFit: "cover" }} className="-m-10 h-32"/>
+                                    <Image src={m.imgSrc ?? placeholder} alt={m.name} width={160} height={160} style={{ objectFit: "cover" }} />
                                 </div>
                                 <div style={styles.name}>{m.name}</div>
                                 <div style={styles.role}>{m.role}</div>

@@ -1,11 +1,23 @@
+"use client";
 import Image from "next/image";
 
 export default function Home() {
+  const galleryPhotos = [
+    "/images/image-21.png",
+    "/images/image-22.png",
+    "/images/image-23.png",
+    "/images/image-24.png",
+    "/images/image-25.png",
+    "/images/image-26.png",
+  ];
+
   return (
-    <main className="bg-black text-white font-sans min-h-full flex-1 px-24 py-16 flex items-center justify-center">
+    <main className="bg-black text-white font-sans min-h-full flex-1 px-24 py-16 flex flex-col">
+      {/* Hero Section */}
+      <section className="flex items-center justify-center flex-1">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           {/* Left: text content */}
-          <section>
+          <div>
             <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight leading-tight mb-2">SUAS</h1>
             <h2 className="text-2xl md:text-3xl font-semibold mb-4">@ Tesla Stem High School</h2>
             <p className="text-teal-300 font-medium mb-6">We’re flying ahead.</p>
@@ -22,7 +34,7 @@ export default function Home() {
             >
               Learn more <span aria-hidden>→</span>
             </a>
-          </section>
+          </div>
 
           {/* Right: image */}
           <div className="flex justify-center md:justify-end">
@@ -35,6 +47,36 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Gallery Section */}
+      <section className="mt-16 px-6">
+        <div className="max-w-6xl mx-auto text-center">
+          <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6">
+            Our Gallery
+          </h3>
+          <p className="text-gray-300 max-w-3xl mx-auto mb-12">
+            These photos showcase the team's hard work, focus, and collaboration as
+            they design, build, and test their drones — highlighting not just
+            their dedication but also the hands-on learning and growth that drive
+            their success.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {galleryPhotos.map((src, idx) => (
+              <div key={idx} className="bg-white border-4 border-white rounded-lg overflow-hidden shadow-lg">
+                <img
+                  src={src}
+                  alt={`gallery-${idx + 1}`}
+                  className="w-full h-48 object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/logo.png";
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
