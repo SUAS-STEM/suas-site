@@ -20,7 +20,7 @@ export default function Navbar(): React.ReactElement {
 	const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
 	return (
-		<nav className="w-full border-b border-gray-800 h-40 flex items-center font-sans relative">
+		<nav className="w-full border-b border-gray-800 h-30 flex items-center font-sans relative">
 			<div className="max-w-6xl mx-auto px-4">
 				{isMobile ? (
 					// Mobile header

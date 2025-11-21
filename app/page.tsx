@@ -12,7 +12,7 @@ export default function Home() {
   ];
 
   return (
-    <main className="bg-black text-white font-sans min-h-full flex-1 px-24 py-16 flex flex-col">
+    <main className="bg-black text-white font-sans min-h-full flex-1 px-8 md:px-24 md:py-16 py-8 flex flex-col">
       {/* Hero Section */}
       <section className="flex items-center justify-center flex-1">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
@@ -53,7 +53,7 @@ export default function Home() {
       <section className="mt-16 px-6">
         <div className="max-w-6xl mx-auto text-center">
           <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6">
-            Our Gallery
+            Gallery
           </h3>
           <p className="text-gray-300 max-w-3xl mx-auto mb-12">
             These photos showcase the team's hard work, focus, and collaboration as
@@ -61,13 +61,13 @@ export default function Home() {
             their dedication but also the hands-on learning and growth that drive
             their success.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-6">
             {galleryPhotos.map((src, idx) => (
-              <div key={idx} className="bg-white border-4 border-white rounded-lg overflow-hidden shadow-lg">
+              <div key={idx} className="bg-white border-2 border-white rounded overflow-hidden shadow-sm">
                 <img
                   src={src}
                   alt={`gallery-${idx + 1}`}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-28 object-cover"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = "/logo.png";
                   }}

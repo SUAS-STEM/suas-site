@@ -21,7 +21,7 @@ const sections: { title: string; members: Member[] }[] = [
         members: [
             { name: "Wenxin Fang", role: "Project Manager", imgSrc: "/images/image-16.png" },
             { name: "Iris Dey", role: "Management Lead", imgSrc: "/images/image-6.png" },
-            { name: "Arnav Mittal", role: "Software Lead", imgSrc: "/images/image-3.png" },
+            { name: "Inesh Dey", role: "Software Lead", imgSrc: "/images/image-5.png" },
             { name: "Yu Tane Quah", role: "Operations Lead", imgSrc: "/images/image-36.png" },
         ],
     },
@@ -51,13 +51,7 @@ const sections: { title: string; members: Member[] }[] = [
             { name: "Kaira Massand", role: "Imaging PM", imgSrc: "/images/image-8.png" },
             { name: "Yichen Qian", role: "Imaging Member", imgSrc: "/images/image-17.png" },
             { name: "Zhencheng Lu", role: "Imaging Member", imgSrc: "/images/image-18.png" },
-        ],
-    },
-    {
-        title: "Web Subsystem",
-        members: [
-            { name: "Neel Nevrekar", role: "Web PM", imgSrc: "/images/image-11.png" },
-            { name: "Inesh Dey", role: "Web & Autopilot Member", imgSrc: "/images/image-5.png" },
+            { name: "Neel Nevrekar", role: "Imaging Member & Web PM", imgSrc: "/images/image-11.png" },
         ],
     },
     {
