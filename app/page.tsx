@@ -50,7 +50,7 @@ export default function Home() {
       </section>
 
       {/* Gallery Section */}
-      <section className="mt-16 px-6">
+      <section className="mt-16 px-6 max-sm:mt-12">
         <div className="max-w-6xl mx-auto text-center">
           <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6">
             Gallery

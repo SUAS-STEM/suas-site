@@ -152,7 +152,7 @@ export default function TeamPage(): React.ReactElement {
             <section style={styles.hero}>
                 <div style={{ maxWidth: 900, margin: "0 auto" }}>
                     <div style={{ color: "var(--foreground)", fontWeight: 700, fontSize: "0.95rem", marginBottom: 8 }}>
-                        SUAS @Tesla Stem High School
+                        SUAS @Tesla STEM High School
                     </div>
                     <h1 style={styles.heroTitle}>The Flight Crew</h1>
                     <p style={styles.heroSubtitle}>
@@ -173,7 +173,7 @@ export default function TeamPage(): React.ReactElement {
                         {sec.members.map((m) => (
                             <div key={m.name} style={styles.card}>
                                 <div style={styles.photoWrap}>
-                                    <Image src={m.imgSrc ?? placeholder} alt={m.name} width={160} height={160} style={{ objectFit: "cover" }} />
+                                    <Image src={m.imgSrc ?? placeholder} alt={m.name} width={200} height={200} style={{ objectFit: "cover" }} className="min-w-64" />
                                 </div>
                                 <div style={styles.name}>{m.name}</div>
                                 <div style={styles.role}>{m.role}</div>
