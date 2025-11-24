@@ -1,15 +1,40 @@
 "use client";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 export default function Home() {
-  const galleryPhotos = [
-    "/images/image-21.png",
-    "/images/image-22.png",
-    "/images/image-23.png",
-    "/images/image-24.png",
-    "/images/image-25.png",
-    "/images/image-26.png",
-  ];
+  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/gallery-images")
+      .then((res) => res.json())
+      .then((data: string[]) => {
+        if (!mounted) return;
+        if (Array.isArray(data) && data.length > 0) {
+          setGalleryPhotos(data);
+        } else {
+          // fallback to a small default set if directory is empty
+          setGalleryPhotos([
+            "/images/image-21.png",
+            "/images/image-22.png",
+            "/images/image-23.png",
+          ]);
+        }
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setGalleryPhotos([
+          "/images/image-21.png",
+          "/images/image-22.png",
+          "/images/image-23.png",
+        ]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <main className="bg-black text-white font-sans min-h-full flex-1 px-8 md:px-24 md:py-16 py-8 flex flex-col">
@@ -61,16 +86,18 @@ export default function Home() {
             their dedication but also the hands-on learning and growth that drive
             their success.
           </p>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-6">
+          <div className="grid grid-cols-3 max-md:grid-cols-2 gap-2 sm:gap-3 md:gap-6">
             {galleryPhotos.map((src, idx) => (
               <div key={idx} className="bg-white border-2 border-white rounded overflow-hidden shadow-sm">
-                <img
+                <Image
                   src={src}
                   alt={`gallery-${idx + 1}`}
-                  className="w-full h-28 object-cover"
+                  className="w-full h-auto aspect-[4/3] object-cover"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = "/logo.png";
                   }}
+                  width={400} 
+                  height={300}
                 />
               </div>
             ))}
