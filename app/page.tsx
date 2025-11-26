@@ -44,7 +44,7 @@ export default function Home() {
           {/* Left: text content */}
           <div>
             <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight leading-tight mb-2">SUAS</h1>
-            <h2 className="text-2xl md:text-3xl font-semibold mb-4">@ Tesla Stem High School</h2>
+            <h2 className="text-2xl md:text-3xl font-semibold mb-4">@ Tesla STEM High School</h2>
             <p className="text-teal-300 font-medium mb-6">We’re flying ahead.</p>
 
             <p className="text-gray-300 max-w-xl mb-8">
