@@ -13,52 +13,50 @@ type Member = {
     imgSrc?: string;
 };
 
-const placeholder = "/logo.png"; // public asset used as placeholder for photos
+const placeholder = "/images/default.svg"; // public asset used as placeholder for photos
 
 const sections: { title: string; members: Member[] }[] = [
     {
-        title: "Leadership",
+        title: "Board",
         members: [
-            { name: "Wenxin Fang", role: "Project Manager", imgSrc: "/images/image-16.png" },
-            { name: "Iris Dey", role: "Management Lead", imgSrc: "/images/image-6.png" },
-            { name: "Inesh Dey", role: "Software Lead", imgSrc: "/images/image-5.png" },
-            { name: "Yu Tane Quah", role: "Operations Lead", imgSrc: "/images/image-36.png" },
+            { name: "Wenxin Fang", role: "Lead Project Manager", imgSrc: "/images/wenxin_fang.png" },
+            { name: "Yu Tane Quah", role: "Operations Lead", imgSrc: "/images/yu_tane_quah.png" },
+
         ],
     },
     {
-        title: "Flight Subsystem",
+        title: "Flight",
         members: [
-            { name: "Karthik Rajagopal", role: "Flight PM", imgSrc: "/images/image-9.png" },
-            { name: "Nithin Ganesh", role: "Flight Member", imgSrc: "/images/image-12.png" },
-            { name: "Max Xie", role: "Flight Member", imgSrc: "/images/image-10.png" },
-            { name: "Akanksha Revuru", role: "Flight Member", imgSrc: "/images/image-2.png" },
-            { name: "Advay Midha", role: "Flight Member", imgSrc: "/images/image-1.png" },
+            { name: "Avnish Dighe", role: "Flight PM", imgSrc: "/images/avnish_dighe.png" },
+            { name: "Pratham Koka", role: "Flight Member", imgSrc: "/images/pratham_koka.png" },
+            { name: "Karthik Rajagopal", role: "Flight Member", imgSrc: "/images/karthik_rajagopal.png" },
+            { name: "Nithin Ganesh", role: "Flight Member", imgSrc: "/images/nithin_ganesh.png" },
+            { name: "Advay Midha", role: "Flight Member", imgSrc: "/images/advay_midha.png" },
+        ]
+    },
+    {
+        title: "Avionics",
+        members: [
+            {name: "Ivana Mohapatra", role: "Avionics PM", imgSrc: "/images/ivana_mohapatra.png" },
+            {name: "Akanksha Revuru", role: "Avionics Member", imgSrc: "/images/akanksha_revuru.png" },
+            {name: "Max Xie", role: "Avionics Member", imgSrc: "/images/max_xie.png" },
+        ]
+    },
+    {
+        title: "Autopilot",
+        members: [
+            { name: "Inesh Dey", role: "Autopilot PM", imgSrc: "/images/inesh_dey.png" },
+            { name: "Jeswanth Sri Sai Battula", role: "Autopilot Member", imgSrc: "/images/jeswanth_sri_sai_battula.png" },
+            { name: "Ethan Chan", role: "Autopilot Member", imgSrc: "/images/ethan_chan.png" },
+            { name: "Neel Nevrekar", role: "Autopilot Member", imgSrc: "/images/neel_nevrekar.png" },
+            { name: "Zhencheng Lu", role: "Autopilot Member", imgSrc: "/images/zhencheng_lu.png" },
         ],
     },
     {
-        title: "Autopilot Subsystem",
+        title: "Doc",
         members: [
-            { name: "Jeswanth Sri Sai Battula", role: "Autopilot PM", imgSrc: "/images/image-7.png" },
-            { name: "Ethan Chan", role: "Autopilot Member", imgSrc: "/images/image-4.png" },
-            { name: "Timur Tilabaev", role: "Autopilot Member", imgSrc: "/images/image-19.png" },
-            { name: "Reyansh Rastogi", role: "Autopilot Member", imgSrc: "/images/image-13.png" },
-            { name: "Neev Jobanputra", role: "Autopilot Member", imgSrc: "/images/image-20.png" },
-        ],
-    },
-    {
-        title: "Imaging Subsystem",
-        members: [
-            { name: "Kaira Massand", role: "Imaging PM", imgSrc: "/images/image-8.png" },
-            { name: "Yichen Qian", role: "Imaging Member", imgSrc: "/images/image-17.png" },
-            { name: "Zhencheng Lu", role: "Imaging Member", imgSrc: "/images/image-18.png" },
-            { name: "Neel Nevrekar", role: "Imaging Member & Web PM", imgSrc: "/images/image-11.png" },
-        ],
-    },
-    {
-        title: "Doc Subsystem",
-        members: [
-            { name: "Timothy An", role: "Doc PM", imgSrc: "/images/image-14.png" },
-            { name: "Ved Agrawal", role: "Doc Member", imgSrc: "/images/image-15.png" },
+            { name: "Timothy An", role: "Doc PM", imgSrc: "/images/timothy_an.png" },
+            { name: "Ved Agrawal", role: "Doc Member", imgSrc: "/images/ved_agrawal.png" },
         ],
     },
 ];
@@ -128,7 +126,6 @@ const styles: Record<string, React.CSSProperties> = {
         borderRadius: "999px",
         overflow: "hidden",
         margin: "0 auto 0.85rem",
-        boxShadow: "0 10px 18px rgba(0,0,0,0.6)",
         background: "#fff",
         display: "flex",
         alignItems: "center",
@@ -172,7 +169,7 @@ export default function TeamPage(): React.ReactElement {
                     <div style={styles.grid}>
                         {sec.members.map((m) => (
                             <div key={m.name} style={styles.card}>
-                                <div style={styles.photoWrap}>
+                                <div style={styles.photoWrap} className="member-photo">
                                     <Image src={m.imgSrc ?? placeholder} alt={m.name} width={200} height={200} style={{ objectFit: "cover" }} className="min-w-64" />
                                 </div>
                                 <div style={styles.name}>{m.name}</div>
