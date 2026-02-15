@@ -138,6 +138,19 @@ footer a {
   color: inherit;
 }
 
+.member-card {
+  background-color: transparent;
+  transition: background-color 500ms ease, box-shadow 500ms ease;
+  cursor: pointer;
+}
+
+.member-card:hover,
+.member-card:active,
+.member-card:focus-within {
+  background-color: var(--primary);
+  box-shadow: 0 0 36px rgba(255, 255, 255, 0.8);
+}
+
 
 @keyframes wipeOut {
   0% {

@@ -112,8 +112,7 @@ const styles: Record<string, React.CSSProperties> = {
         marginTop: "1.4rem",
     },
     card: {
-        background: "transparent",
-        borderRadius: 12,
+        borderRadius: 24,
         padding: "1rem",
         textAlign: "center",
     },
@@ -165,8 +164,8 @@ export default function TeamPage(): React.ReactElement {
                     <div style={styles.titleAccent} />
                     <div style={styles.grid}>
                         {sec.members.map((m) => (
-                            <div key={m.name} style={styles.card}>
-                                <div style={styles.photoWrap} className="member-photo">
+                            <div key={m.name} style={styles.card} className="member-card">
+                                <div style={styles.photoWrap}>
                                     <Image src={"/images/" + m.name.toLowerCase().replaceAll(" ", "_") + ".png"} alt={m.name} width={200} height={200} style={{ objectFit: "cover" }} className="min-w-64" />
                                 </div>
                                 <div style={styles.name}>{m.name}</div>
