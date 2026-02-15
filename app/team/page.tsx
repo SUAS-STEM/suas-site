@@ -10,53 +10,50 @@ export const metadata: Metadata = {
 type Member = {
     name: string;
     role: string;
-    imgSrc?: string;
 };
-
-const placeholder = "/images/default.svg"; // public asset used as placeholder for photos
 
 const sections: { title: string; members: Member[] }[] = [
     {
         title: "Board",
         members: [
-            { name: "Wenxin Fang", role: "Lead Project Manager", imgSrc: "/images/wenxin_fang.png" },
-            { name: "Yu Tane Quah", role: "Operations Lead", imgSrc: "/images/yu_tane_quah.png" },
+            { name: "Wenxin Fang", role: "Lead Project Manager" },
+            { name: "Yu Tane Quah", role: "Operations Lead" },
 
         ],
     },
     {
         title: "Flight",
         members: [
-            { name: "Avnish Dighe", role: "Flight PM", imgSrc: "/images/avnish_dighe.png" },
-            { name: "Pratham Koka", role: "Flight Member", imgSrc: "/images/pratham_koka.png" },
-            { name: "Karthik Rajagopal", role: "Flight Member", imgSrc: "/images/karthik_rajagopal.png" },
-            { name: "Nithin Ganesh", role: "Flight Member", imgSrc: "/images/nithin_ganesh.png" },
-            { name: "Advay Midha", role: "Flight Member", imgSrc: "/images/advay_midha.png" },
+            { name: "Avnish Dighe", role: "Flight PM" },
+            { name: "Pratham Koka", role: "Flight Member" },
+            { name: "Karthik Rajagopal", role: "Flight Member" },
+            { name: "Nithin Ganesh", role: "Flight Member" },
+            { name: "Advay Midha", role: "Flight Member" },
         ]
     },
     {
         title: "Avionics",
         members: [
-            {name: "Ivana Mohapatra", role: "Avionics PM", imgSrc: "/images/ivana_mohapatra.png" },
-            {name: "Akanksha Revuru", role: "Avionics Member", imgSrc: "/images/akanksha_revuru.png" },
-            {name: "Max Xie", role: "Avionics Member", imgSrc: "/images/max_xie.png" },
+            {name: "Ivana Mohapatra", role: "Avionics PM" },
+            {name: "Akanksha Revuru", role: "Avionics Member" },
+            {name: "Max Xie", role: "Avionics Member" },
         ]
     },
     {
         title: "Autopilot",
         members: [
-            { name: "Inesh Dey", role: "Autopilot PM", imgSrc: "/images/inesh_dey.png" },
-            { name: "Jeswanth Sri Sai Battula", role: "Autopilot Member", imgSrc: "/images/jeswanth_sri_sai_battula.png" },
-            { name: "Ethan Chan", role: "Autopilot Member", imgSrc: "/images/ethan_chan.png" },
-            { name: "Neel Nevrekar", role: "Autopilot Member", imgSrc: "/images/neel_nevrekar.png" },
-            { name: "Zhencheng Lu", role: "Autopilot Member", imgSrc: "/images/zhencheng_lu.png" },
+            { name: "Inesh Dey", role: "Autopilot PM" },
+            { name: "Jeswanth Sri Sai Battula", role: "Autopilot Member" },
+            { name: "Ethan Chan", role: "Autopilot Member" },
+            { name: "Neel Nevrekar", role: "Autopilot Member" },
+            { name: "Zhencheng Lu", role: "Autopilot Member" },
         ],
     },
     {
         title: "Doc",
         members: [
-            { name: "Timothy An", role: "Doc PM", imgSrc: "/images/timothy_an.png" },
-            { name: "Ved Agrawal", role: "Doc Member", imgSrc: "/images/ved_agrawal.png" },
+            { name: "Timothy An", role: "Doc PM" },
+            { name: "Ved Agrawal", role: "Doc Member" },
         ],
     },
 ];
@@ -170,7 +167,7 @@ export default function TeamPage(): React.ReactElement {
                         {sec.members.map((m) => (
                             <div key={m.name} style={styles.card}>
                                 <div style={styles.photoWrap} className="member-photo">
-                                    <Image src={m.imgSrc ?? placeholder} alt={m.name} width={200} height={200} style={{ objectFit: "cover" }} className="min-w-64" />
+                                    <Image src={"/images/" + m.name.toLowerCase().replaceAll(" ", "_") + ".png"} alt={m.name} width={200} height={200} style={{ objectFit: "cover" }} className="min-w-64" />
                                 </div>
                                 <div style={styles.name}>{m.name}</div>
                                 <div style={styles.role}>{m.role}</div>
