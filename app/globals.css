@@ -13,7 +13,6 @@
   --font-sans: var(--font-exo2);
   --font-mono: var(--font-geist-mono);
   --color-primary: var(--primary);
-
 }
 
 body {
@@ -138,19 +137,240 @@ footer a {
   color: inherit;
 }
 
-.member-card {
-  background-color: transparent;
-  transition: background-color 500ms ease, box-shadow 500ms ease;
+.min-w-64 {
   cursor: pointer;
 }
 
-.member-card:hover,
-.member-card:active,
-.member-card:focus-within {
-  background-color: var(--primary);
-  box-shadow: 0 0 36px rgba(255, 255, 255, 0.8);
+.member-photo-wrap {
+  transition: box-shadow 300ms ease, transform 300ms ease;
 }
 
+.member-card:hover .member-photo-wrap,
+.member-card:active .member-photo-wrap,
+.member-card:focus-visible .member-photo-wrap {
+  box-shadow: 0 0 36px rgba(255, 255, 255, 0.8);
+  transform: scale(1.03);
+}
+
+.member-card:active .member-photo-wrap {
+  transform: scale(1.01);
+}
+
+.member-card:focus-visible {
+  outline: 2px solid var(--primary-light);
+  outline-offset: 4px;
+}
+
+.member-card {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.member-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+  animation: memberBackdropIn 300ms ease forwards;
+}
+
+.member-backdrop.is-closing {
+  animation: memberBackdropOut 300ms ease forwards;
+}
+
+.member {
+  position: relative;
+  width: min(600px, 85%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(135deg, #313131 0%, #111 55%, #0b0b0b 100%) !important;
+  color: var(--foreground);
+  padding: 1.25rem;
+  font-family: var(--font-exo2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  animation: memberIn 300ms ease forwards;
+}
+
+.member-backdrop.is-closing .member {
+  animation: memberOut 300ms ease forwards;
+}
+
+.member.member-switch-prev-in {
+  animation: memberSwitchPrevIn 180ms ease forwards;
+}
+
+.member.member-switch-next-in {
+  animation: memberSwitchNextIn 180ms ease forwards;
+}
+
+.member-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+  opacity: 1;
+  transition: transform 150ms ease;
+}
+
+.member-close img {
+  opacity: 0.6;
+  transition: opacity 150ms ease;
+}
+
+.member-close:hover,
+.member-close:focus-visible {
+  transform: scale(1.05);
+}
+
+.member-close:hover img,
+.member-close:focus-visible img {
+  opacity: 1;
+}
+
+.member-nav {
+  border: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 150ms ease;
+  z-index: 999;
+}
+
+.member-nav:hover,
+.member-nav:focus-visible {
+  background: rgba(255, 255, 255, 0.28);
+  transform: scale(1.05);
+}
+
+.member-nav-left {
+  margin-right: 0.9rem;
+}
+
+.member-nav-right {
+  margin-left: 0.9rem;
+}
+
+.member-title {
+  margin: 1rem;
+  font-size: 2rem;
+  text-align: center;
+}
+
+.member-photo {
+  display: flex;
+  justify-content: center;
+}
+
+.member h4 {
+  font-size: 1.4rem !important;
+}
+
+.member hr {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  color: rgb(63, 63, 63);
+}
+
+.member-role {
+  color: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.member-data {
+  display: flex;
+  align-items: left;
+  gap: 0.45rem;
+}
+
+@keyframes memberBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes memberBackdropOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes memberIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes memberOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+@keyframes memberSwitchPrevIn {
+  from {
+    opacity: 0;
+    transform: translateX(-22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes memberSwitchNextIn {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 720px) {
+  .member-nav {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+
+  .member-nav-left {
+    margin-right: 0.5rem;
+  }
+
+  .member-nav-right {
+    margin-left: 0.5rem;
+  }
+}
 
 @keyframes wipeOut {
   0% {
