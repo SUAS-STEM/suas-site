@@ -49,11 +49,11 @@ export default function Navbar(): React.ReactElement {
 					<div className="grid grid-cols-3 items-center py-4">
 						{/* Left links */}
 						<div className="flex gap-24 items-center justify-start">
-							<Link href="/" className="text-md font-medium hover:underline">
-								Home
-							</Link>
 							<Link href="/team" className="text-md font-medium hover:underline">
 								Team
+							</Link>
+							<Link href="/gallery" className="text-md font-medium hover:underline">
+								Gallery
 							</Link>
 						</div>
 
