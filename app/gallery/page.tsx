@@ -81,8 +81,8 @@ export default function GalleryPage() {
     };
 
     return (
-        <main className="bg-black text-white font-sans min-h-full flex-1 px-8 md:px-24 md:py-16 py-8 flex flex-col">
-            <section className="mt-16 px-6 max-sm:mt-12">
+        <main className="bg-black text-white font-sans min-h-full flex-1 px-4 md:px-24 md:py-16 py-8 flex flex-col">
+            <section className="mt-16 px-0 md:px-6 max-sm:mt-12">
                 <div className="max-w-6xl mx-auto text-center">
                     <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6">
                         Gallery
@@ -119,12 +119,12 @@ export default function GalleryPage() {
                             <div className="w-full h-[70vh] justify-center items-center flex">
                                 <div
                                     key={`${currentIndex}-${switchClass}`}
-                                    className={`h-full rounded-xl overflow-hidden ${switchClass}`}
+                                    className={`h-full w-full flex items-center justify-center rounded-xl overflow-hidden ${switchClass}`}
                                 >
                                     <Image
                                         src={galleryPhotos[currentIndex] || "/logo.png"}
                                         alt={`gallery-${currentIndex + 1}`}
-                                        className="h-full w-auto max-w-none object-contain rounded-xl border border-white"
+                                        className="block max-h-full w-auto max-w-full rounded-xl border border-white"
                                         style={{ borderRadius: "0.75rem" }}
                                         onError={(e) => {
                                             (e.currentTarget as HTMLImageElement).src = "/logo.png";
