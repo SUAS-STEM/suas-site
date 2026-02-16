@@ -6,6 +6,7 @@ export default function GalleryPage() {
     const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
     const [isFullscreenMode, setIsFullscreenMode] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [switchClass, setSwitchClass] = useState("");
 
     useEffect(() => {
         let mounted = true;
@@ -42,15 +43,11 @@ export default function GalleryPage() {
         if (!isFullscreenMode) return;
 
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (
-                galleryPhotos.length <= 1 &&
-                (event.key === "ArrowRight" || event.key === "ArrowLeft")
-            ) {
-                return;
-            }
             if (event.key === "ArrowRight") {
+                setSwitchClass("gallery-switch-next-in");
                 setCurrentIndex((prev) => (prev + 1) % galleryPhotos.length);
             } else if (event.key === "ArrowLeft") {
+                setSwitchClass("gallery-switch-prev-in");
                 setCurrentIndex(
                     (prev) => (prev - 1 + galleryPhotos.length) % galleryPhotos.length,
                 );
@@ -64,17 +61,20 @@ export default function GalleryPage() {
     }, [isFullscreenMode, galleryPhotos.length]);
 
     const openFullscreenAt = (index: number) => {
+        setSwitchClass("");
         setCurrentIndex(index);
         setIsFullscreenMode(true);
     };
 
     const showNext = () => {
         if (galleryPhotos.length <= 1) return;
+        setSwitchClass("gallery-switch-next-in");
         setCurrentIndex((prev) => (prev + 1) % galleryPhotos.length);
     };
 
     const showPrevious = () => {
         if (galleryPhotos.length <= 1) return;
+        setSwitchClass("gallery-switch-prev-in");
         setCurrentIndex(
             (prev) => (prev - 1 + galleryPhotos.length) % galleryPhotos.length,
         );
@@ -117,7 +117,10 @@ export default function GalleryPage() {
                     {isFullscreenMode ? (
                         <div className="w-full flex flex-col items-center gap-6">
                             <div className="w-full h-[70vh] justify-center items-center flex">
-                                <div className="h-full rounded-xl overflow-hidden">
+                                <div
+                                    key={`${currentIndex}-${switchClass}`}
+                                    className={`h-full rounded-xl overflow-hidden ${switchClass}`}
+                                >
                                     <Image
                                         src={galleryPhotos[currentIndex] || "/logo.png"}
                                         alt={`gallery-${currentIndex + 1}`}

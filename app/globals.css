@@ -239,6 +239,14 @@ footer a {
   animation: memberSwitchNextIn 180ms ease forwards;
 }
 
+.gallery-switch-prev-in {
+  animation: gallerySwitchPrevIn 180ms ease forwards;
+}
+
+.gallery-switch-next-in {
+  animation: gallerySwitchNextIn 180ms ease forwards;
+}
+
 .member-close {
   position: absolute;
   top: 0.75rem;
@@ -378,6 +386,28 @@ footer a {
 }
 
 @keyframes memberSwitchNextIn {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gallerySwitchPrevIn {
+  from {
+    opacity: 0;
+    transform: translateX(-22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gallerySwitchNextIn {
   from {
     opacity: 0;
     transform: translateX(22px);
