@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
 import Image from "next/image";
+import { useEffect, useCallback, useState, ReactElement, useMemo, CSSProperties } from "react";
 
 enum Rank {
     Member = "Member",
@@ -50,7 +50,7 @@ function MemberPhoto({
     name: string;
     size?: number;
     className?: string;
-}): React.ReactElement {
+}): ReactElement {
     return (
         <Image
             src={getMemberImageSrc(name)}
@@ -114,7 +114,7 @@ const sections: { title: string; description: string, members: Member[] }[] = [
     },
 ];
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
     page: {
         maxWidth: 1100,
         margin: "0 auto",
@@ -199,18 +199,18 @@ const styles: Record<string, React.CSSProperties> = {
     },
 };
 
-export default function TeamContent(): React.ReactElement {
+export default function TeamContent(): ReactElement {
     const MODAL_TRANSITION_MS = 300;
-    const [isOpen, setIsOpen] = React.useState(false);
-    const [isClosing, setIsClosing] = React.useState(false);
-    const [switchClass, setSwitchClass] = React.useState("");
-    const [selectedMember, setSelectedMember] = React.useState<Member | null>(null);
-    const allMembers = React.useMemo(
+    const [isOpen, setIsOpen] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
+    const [switchClass, setSwitchClass] = useState("");
+    const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+    const allMembers = useMemo(
         () => sections.flatMap((section) => section.members.map((member) => ({ ...member, subsystem: section.title }))),
         []
     );
 
-    const selectedMemberIndex = React.useMemo(() => {
+    const selectedMemberIndex = useMemo(() => {
         if (!selectedMember) return -1;
         return allMembers.findIndex(
             (member) =>
@@ -219,7 +219,7 @@ export default function TeamContent(): React.ReactElement {
         );
     }, [allMembers, selectedMember]);
 
-    const toMember = React.useCallback((offset: number): void => {
+    const toMember = useCallback((offset: number): void => {
         if (selectedMemberIndex < 0 || allMembers.length === 0 || isClosing) return;
         const directionClass = offset < 0 ? "member-switch-prev-in" : "member-switch-next-in";
         const nextIndex = (selectedMemberIndex + offset + allMembers.length) % allMembers.length;
@@ -228,15 +228,15 @@ export default function TeamContent(): React.ReactElement {
         setSwitchClass(directionClass);
     }, [allMembers, isClosing, selectedMemberIndex]);
 
-    const previous = React.useCallback((): void => {
+    const previous = useCallback((): void => {
         toMember(-1);
     }, [toMember]);
 
-    const next = React.useCallback((): void => {
+    const next = useCallback((): void => {
         toMember(1);
     }, [toMember]);
 
-    const close = React.useCallback((): void => {
+    const close = useCallback((): void => {
         if (!isOpen || isClosing) return;
         setSwitchClass("");
         setIsClosing(true);
@@ -248,7 +248,7 @@ export default function TeamContent(): React.ReactElement {
         }, MODAL_TRANSITION_MS);
     }, [isClosing, isOpen]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         function onKeyDown(event: KeyboardEvent): void {
             if (event.key === "Escape") {
                 close();
@@ -384,10 +384,10 @@ export default function TeamContent(): React.ReactElement {
                             <span>{"Grade " + selectedMember.grade}</span>
                         </p>
                         <hr />
-                        <div style={{ height: "10px" }}></div>
+                        {/* <div style={{ height: "10px" }}></div>
                         <h4>About</h4>
                         <div style={{ height: "10px" }}></div>
-                        <p>{selectedMember.about}</p>
+                        <p>{selectedMember.about}</p> */}
                     </div>
                     <button
                         type="button"
