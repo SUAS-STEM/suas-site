@@ -116,25 +116,6 @@ export default function GalleryPage() {
                     </div>
                     {isFullscreenMode ? (
                         <div className="w-full flex flex-col items-center gap-6">
-                            <div className="w-full h-[70vh] justify-center items-center flex">
-                                <div
-                                    key={`${currentIndex}-${switchClass}`}
-                                    className={`h-full w-full flex items-center justify-center rounded-xl overflow-hidden ${switchClass}`}
-                                >
-                                    <Image
-                                        src={galleryPhotos[currentIndex] || "/logo.png"}
-                                        alt={`gallery-${currentIndex + 1}`}
-                                        className="block max-h-full w-auto max-w-full rounded-xl border border-white"
-                                        style={{ borderRadius: "0.75rem" }}
-                                        onError={(e) => {
-                                            (e.currentTarget as HTMLImageElement).src = "/logo.png";
-                                        }}
-                                        width={1200}
-                                        height={900}
-                                        priority
-                                    />
-                                </div>
-                            </div>
                             <div className="flex items-center justify-center gap-4">
                                 <button
                                     type="button"
@@ -170,6 +151,26 @@ export default function GalleryPage() {
                                     />
                                 </button>
                             </div>
+                            <div className="w-full justify-center items-start flex">
+                                <div
+                                    key={`${currentIndex}-${switchClass}`}
+                                    className={`w-full flex items-start justify-center rounded-xl overflow-hidden ${switchClass}`}
+                                >
+                                    <Image
+                                        src={galleryPhotos[currentIndex] || "/logo.png"}
+                                        alt={`gallery-${currentIndex + 1}`}
+                                        className="block h-auto w-auto max-w-full rounded-xl border border-white"
+                                        style={{ borderRadius: "0.75rem" }}
+                                        onError={(e) => {
+                                            (e.currentTarget as HTMLImageElement).src = "/logo.png";
+                                        }}
+                                        width={1200}
+                                        height={900}
+                                        priority
+                                    />
+                                </div>
+                            </div>
+
                         </div>
                     ) : (
                         <div className="grid grid-cols-3 max-md:grid-cols-2 gap-2 sm:gap-3 md:gap-6">
