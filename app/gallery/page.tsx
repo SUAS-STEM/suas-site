@@ -80,6 +80,15 @@ export default function GalleryPage() {
         );
     };
 
+    const previousIndex =
+        galleryPhotos.length > 0
+            ? (currentIndex - 1 + galleryPhotos.length) % galleryPhotos.length
+            : 0;
+    const nextIndex =
+        galleryPhotos.length > 0
+            ? (currentIndex + 1) % galleryPhotos.length
+            : 0;
+
     return (
         <main className="bg-black text-white font-sans min-h-full flex-1 px-4 md:px-24 md:py-16 py-8 flex flex-col">
             <section className="mt-16 px-0 md:px-6 max-sm:mt-12">
@@ -166,9 +175,36 @@ export default function GalleryPage() {
                                         }}
                                         width={1200}
                                         height={900}
-                                        priority
+                                        loading="eager"
+                                        sizes="(max-width: 768px) 100vw, 1200px"
                                     />
                                 </div>
+                                {/* Used as a cache to have the browser preload images before they're clicked. */}
+                                {galleryPhotos.length > 1 && (
+                                    <div
+                                        className="hidden"
+                                        aria-hidden="true"
+                                    >
+                                        <Image
+                                            src={galleryPhotos[nextIndex]}
+                                            alt=""
+                                            width={1200}
+                                            height={900}
+                                            loading="eager"
+                                            fetchPriority="low"
+                                            sizes="(max-width: 768px) 100vw, 1200px"
+                                        />
+                                        <Image
+                                            src={galleryPhotos[previousIndex]}
+                                            alt=""
+                                            width={1200}
+                                            height={900}
+                                            loading="eager"
+                                            fetchPriority="low"
+                                            sizes="(max-width: 768px) 100vw, 1200px"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                         </div>
