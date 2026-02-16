@@ -5,6 +5,9 @@
   --primary-light: #4fd1d5;
   --background: #0a0a0a;
   --foreground: #ededed;
+  --border: 1px solid rgba(255, 255, 255, 0.18);
+  --border-thick: 2px solid rgba(255, 255, 255, 0.18);
+  --gradient: linear-gradient(135deg, #313131 0%, #111 55%, #0b0b0b 100%) !important;
 }
 
 @theme inline {
@@ -137,6 +140,29 @@ footer a {
   color: inherit;
 }
 
+.button-main {
+  display: flex;
+  border: var(--border-thick);
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+  background: var(--gradient);
+  cursor: pointer;
+  transition: background-color 300ms ease;
+
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.button-main:hover {
+  background: var(--primary);
+}
+.button-main img {
+  display: block;
+}
+
 .min-w-64 {
   cursor: pointer;
 }
@@ -190,8 +216,8 @@ footer a {
   width: min(600px, 85%);
   max-height: calc(100dvh - 2rem);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: linear-gradient(135deg, #313131 0%, #111 55%, #0b0b0b 100%) !important;
+  border: var(--border);
+  background: var(--gradient);
   color: var(--foreground);
   padding: 1.25rem;
   font-family: var(--font-exo2);
