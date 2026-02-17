@@ -80,14 +80,25 @@ export default function GalleryPage() {
         );
     };
 
-    const previousIndex =
-        galleryPhotos.length > 0
-            ? (currentIndex - 1 + galleryPhotos.length) % galleryPhotos.length
-            : 0;
-    const nextIndex =
-        galleryPhotos.length > 0
-            ? (currentIndex + 1) % galleryPhotos.length
-            : 0;
+    // Preload 6 next and 6 previous images. Should be a balance of performance and memory usage.
+    const cacheSize = 6;
+    const preloadIndices =
+        galleryPhotos.length > 1
+            ? Array.from(
+                new Set([
+                    ...Array.from(
+                        { length: Math.min(cacheSize, galleryPhotos.length - 1) },
+                        (_, offset) => (currentIndex + offset + 1) % galleryPhotos.length,
+                    ),
+                    ...Array.from(
+                        { length: Math.min(cacheSize, galleryPhotos.length - 1) },
+                        (_, offset) =>
+                            (currentIndex - (offset + 1) + galleryPhotos.length) %
+                            galleryPhotos.length,
+                    ),
+                ]),
+            )
+            : [];
 
     return (
         <main className="bg-black text-white font-sans min-h-full flex-1 px-4 md:px-24 md:py-16 py-8 flex flex-col">
@@ -180,29 +191,23 @@ export default function GalleryPage() {
                                     />
                                 </div>
                                 {/* Used as a cache to have the browser preload images before they're clicked. */}
-                                {galleryPhotos.length > 1 && (
+                                {preloadIndices.length > 0 && (
                                     <div
                                         className="hidden"
                                         aria-hidden="true"
                                     >
-                                        <Image
-                                            src={galleryPhotos[nextIndex]}
-                                            alt=""
-                                            width={1200}
-                                            height={900}
-                                            loading="eager"
-                                            fetchPriority="low"
-                                            sizes="(max-width: 768px) 100vw, 1200px"
-                                        />
-                                        <Image
-                                            src={galleryPhotos[previousIndex]}
-                                            alt=""
-                                            width={1200}
-                                            height={900}
-                                            loading="eager"
-                                            fetchPriority="low"
-                                            sizes="(max-width: 768px) 100vw, 1200px"
-                                        />
+                                        {preloadIndices.map((index) => (
+                                            <Image
+                                                key={`preload-${index}`}
+                                                src={galleryPhotos[index]}
+                                                alt=""
+                                                width={1200}
+                                                height={900}
+                                                loading="eager"
+                                                fetchPriority="low"
+                                                sizes="(max-width: 768px) 100vw, 1200px"
+                                            />
+                                        ))}
                                     </div>
                                 )}
                             </div>
