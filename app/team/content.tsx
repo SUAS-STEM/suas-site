@@ -97,7 +97,7 @@ const sections: { title: string; description: string, members: Member[] }[] = [
         title: "Autopilot",
         description: "The Autopilot subsystem is responsible for integrating software and autonomous operations.",
         members: [
-            { name: "Inesh Dey", grade: 10, rank: Rank.PM },
+            { name: "Inesh Dey", grade: 12, rank: Rank.PM },
             { name: "Jeswanth Sri Sai Battula", grade: 10, rank: Rank.Member },
             { name: "Ethan Chan", grade: 10, rank: Rank.Member },
             { name: "Neel Nevrekar", grade: 10, rank: Rank.Member },
