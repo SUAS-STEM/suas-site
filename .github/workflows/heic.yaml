@@ -1,0 +1,39 @@
+name: Convert HEICs to PNGs
+
+on:
+  push:
+    paths:
+      - '**/*.heic'
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Install dependencies
+      run: |
+        sudo apt install -y libheif-examples parallel
+
+    - name: Convert HEICs to PNGs
+      run: |
+        shopt -s globstar nullglob
+        find . -type f -name '*.heic' | parallel '
+          png_file="{.}.png"
+          heif-convert "{}" "$png_file" && rm "{}"
+        '
+
+    - name: Commit and push changes
+      run: |
+        git config --local user.name "SUAS Robot"
+        git config --local user.email "robot@engineeringclub.org"
+        git add -A
+        if ! git diff --cached --quiet; then
+          git commit -m "Convert HEIC images to PNG"
+          git push
+        else
+          echo "No HEIC files to convert, no changes were made."
+        fi
