@@ -77,11 +77,10 @@ const sections: { title: string; description: string, members: Member[] }[] = [
         title: "Flight",
         description: "The Flight subsystem is responsible for the physical design and construction.",
         members: [
-            { name: "Avnish Dighe", grade: 12, rank: Rank.PM },
+            { name: "Karthik Rajagopal", grade: 11, rank: Rank.PM },
             { name: "Pratham Koka", grade: 9, rank: Rank.Member },
-            { name: "Karthik Rajagopal", grade: 11, rank: Rank.Member },
-            { name: "Nithin Ganesh", grade: 10, rank: Rank.Member },
-            { name: "Advay Midha", grade: 10, rank: Rank.Member },
+            { name: "Avnish Dighe", grade: 12, rank: Rank.Member },
+            { name: "Zifeng (Jeff) Gao", grade: 12, rank: Rank.Member },
         ]
     },
     {
@@ -89,8 +88,10 @@ const sections: { title: string; description: string, members: Member[] }[] = [
         description: "The Avionics subsystem is responsible for electronic systems.",
         members: [
             { name: "Ivana Mohapatra", grade: 10, rank: Rank.PM },
+            { name: "Nithin Ganesh", grade: 10, rank: Rank.Member },
             { name: "Akanksha Revuru", grade: 11, rank: Rank.Member },
             { name: "Max Xie", grade: 11, rank: Rank.Member },
+            { name: "Advay Midha", grade: 10, rank: Rank.Member },
         ]
     },
     {
@@ -100,9 +101,15 @@ const sections: { title: string; description: string, members: Member[] }[] = [
             { name: "Inesh Dey", grade: 12, rank: Rank.PM },
             { name: "Jeswanth Sri Sai Battula", grade: 10, rank: Rank.Member },
             { name: "Ethan Chan", grade: 10, rank: Rank.Member },
-            { name: "Neel Nevrekar", grade: 10, rank: Rank.Member },
+        ]
+    },
+    {
+        "title": "Imaging",
+        description: "The Imaging subsystem is responsible for developing the drone's AI vision capabilities.",
+        members: [
+            { name: "Neel Nevrekar", grade: 10, rank: Rank.PM },
             { name: "Zhencheng Lu", grade: 10, rank: Rank.Member },
-        ],
+        ]
     },
     {
         title: "Doc",
