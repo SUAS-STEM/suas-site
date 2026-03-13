@@ -107,12 +107,6 @@ export default function GalleryPage() {
                     <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6">
                         Gallery
                     </h3>
-                    <p className="text-gray-300 max-w-3xl mx-auto mb-12">
-                        These photos showcase the team&apos;s hard work, focus, and
-                        collaboration as they design, build, and test their
-                        drones&mdash;highlighting not just their dedication but also the
-                        hands-on learning and growth that drive their success.
-                    </p>
                     <div className="mb-6 flex justify-center">
                         <button
                             type="button"

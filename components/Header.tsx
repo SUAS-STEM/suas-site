@@ -66,11 +66,11 @@ export default function Navbar(): React.ReactElement {
 
 						{/* Right links */}
 						<div className="flex gap-24 items-center justify-end">
+							<Link href="/drone" className="text-md font-medium hover:underline">
+								Drone
+							</Link>
 							<Link href="/sponsor" className="text-md font-medium hover:underline">
 								Sponsor
-							</Link>
-							<Link href="https://github.com/Tesla-STEM-SUAS" className="text-md font-medium hover:underline" target="_blank" rel="noopener noreferrer">
-								Open Source
 							</Link>
 						</div>
 					</div>
@@ -89,11 +89,11 @@ export default function Navbar(): React.ReactElement {
 							<Link href="/gallery" className="text-md font-medium hover:underline" onClick={() => setIsMenuOpen(false)}>
 								Gallery
 							</Link>
+							<Link href="/drone" className="text-md font-medium hover:underline" onClick={() => setIsMenuOpen(false)}>
+								Drone
+							</Link>
 							<Link href="/sponsor" className="text-md font-medium hover:underline" onClick={() => setIsMenuOpen(false)}>
 								Sponsor
-							</Link>
-							<Link href="https://github.com/Tesla-STEM-SUAS" className="text-md font-medium hover:underline" target="_blank" rel="noopener noreferrer" onClick={() => setIsMenuOpen(false)}>
-								Open Source
 							</Link>
 						</div>
 					</div>

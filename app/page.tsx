@@ -11,12 +11,16 @@ export default function Home() {
           <div>
             <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight leading-tight mb-2">SUAS</h1>
             <h2 className="text-2xl md:text-3xl font-semibold mb-4">@ Tesla STEM High School</h2>
-            <p className="text-teal-300 font-medium mb-6">We’re flying ahead.</p>
+            <p className="text-teal-300 font-medium mb-6">We're flying ahead.</p>
 
             <p className="text-gray-300 max-w-xl mb-8">
-              SUAS at STEM is one of the few high school teams competing in advanced drone and robotics events. It provides hands-on
-              experience with cutting-edge technology, developing strong skills and teamwork. Their success highlights their leadership
-              in high school STEM.
+              SUAS@STEM is Tesla STEM High School's competition team for the RoboNation <a href="https://suas-competition.org/" target="blank">Student Unmanned Aerial Systems</a> (SUAS) competition. Our team designs and builds autonomous drones capable of performing complex real-world missions including navigation, computer vision, and payload delivery.
+            </p>
+              <p className="text-gray-300 max-w-xl mb-8">
+                2026 is the first year of SUAS@STEM. We are currently designing and testing our third aircraft, Event Horizon 3, and are excited to represent Tesla STEM High School at Skyway Range in Tulsa, Oklahoma later this year.
+              </p>
+            <p className="text-gray-300 max-w-xl mb-8">
+              SUAS@STEM is affiliated with Tesla STEM's <a href="https://engineeringclub.org" target="_blank">Engineering Club</a>.
             </p>
 
             <a

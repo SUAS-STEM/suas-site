@@ -16,11 +16,11 @@ export default function Footer(): React.ReactElement {
             <Link href="/gallery" className="text-sm hover:underline">
               Gallery
             </Link>
+            <Link href="/drone" className="text-sm hover:underline">
+              Drone
+            </Link>
             <Link href="/sponsor" className="text-sm hover:underline">
               Sponsor
-            </Link>
-            <Link href="https://github.com/Tesla-STEM-SUAS" className="text-sm hover:underline" target="_blank" rel="noopener noreferrer">
-              Open Source
             </Link>
           </div>
 

@@ -140,6 +140,12 @@ footer a {
   color: inherit;
 }
 
+p a {
+  color: var(--primary);
+  text-decoration: underline;
+  transition: color 150ms ease;
+}
+
 .button-main {
   display: flex;
   border: var(--border-thick);

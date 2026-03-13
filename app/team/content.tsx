@@ -75,7 +75,7 @@ const sections: { title: string; description: string, members: Member[] }[] = [
     },
     {
         title: "Flight",
-        description: "The Flight subsystem is responsible for the physical design and construction.",
+        description: "The Flight subsystem handles the aircraft's physical design and construction.",
         members: [
             { name: "Karthik Rajagopal", grade: 11, rank: Rank.PM },
             { name: "Pratham Koka", grade: 9, rank: Rank.Member },
@@ -85,7 +85,7 @@ const sections: { title: string; description: string, members: Member[] }[] = [
     },
     {
         title: "Avionics",
-        description: "The Avionics subsystem is responsible for electronic systems.",
+        description: "The Avionics subsystem develops and integrates onboard electronics.",
         members: [
             { name: "Ivana Mohapatra", grade: 10, rank: Rank.PM },
             { name: "Nithin Ganesh", grade: 10, rank: Rank.Member },
@@ -96,7 +96,7 @@ const sections: { title: string; description: string, members: Member[] }[] = [
     },
     {
         title: "Autopilot",
-        description: "The Autopilot subsystem is responsible for integrating software and autonomous operations.",
+        description: "The Autopilot subsystem develops software for autonomous flight.",
         members: [
             { name: "Inesh Dey", grade: 12, rank: Rank.PM },
             { name: "Jeswanth Sri Sai Battula", grade: 10, rank: Rank.Member },
@@ -105,7 +105,7 @@ const sections: { title: string; description: string, members: Member[] }[] = [
     },
     {
         "title": "Imaging",
-        description: "The Imaging subsystem is responsible for developing the drone's AI vision capabilities.",
+        description: "The Imaging subsystem develops the drone's computer vision capabilities.",
         members: [
             { name: "Neel Nevrekar", grade: 10, rank: Rank.PM },
             { name: "Zhencheng Lu", grade: 10, rank: Rank.Member },
@@ -113,7 +113,7 @@ const sections: { title: string; description: string, members: Member[] }[] = [
     },
     {
         title: "Doc",
-        description: "The Doc subsystem is responsible for creating a brand image and documenting the team's process.",
+        description: "The Doc subsystem manages team documentation and branding.",
         members: [
             { name: "Timothy An", grade: 10, rank: Rank.PM },
             { name: "Ved Agrawal", grade: 9, rank: Rank.Member },
@@ -285,11 +285,9 @@ export default function TeamContent(): ReactElement {
                         </div>
                         <h1 style={styles.heroTitle}>The Flight Crew</h1>
                         <p style={styles.heroSubtitle}>
-                            The SUAS @STEM team consists of dedicated students who balance a heavy
-                            school workload yet consistently strive to be among the best. Despite
-                            the demands of classes and exams, they remain focused and work
-                            tirelessly on designing, building, and programming their drones,
-                            continually improving their skills.
+                            We are a team of eighteen students from Tesla STEM High School, ranked #1 in Washington state
+                            and #18 nationally by <a href="https://www.usnews.com/education/best-high-schools/washington/districts/lake-washington-school-district/nikola-tesla-stem-high-school-146690" target="_blank">US News</a>.
+                            We collaborate in six engineering subsystems spanning aerospace, electrical, and software disciplines to develop an aircraft to compete in the SUAS competition.
                         </p>
                     </div>
                 </section>
