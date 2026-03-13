@@ -66,8 +66,8 @@ export default function Navbar(): React.ReactElement {
 
 						{/* Right links */}
 						<div className="flex gap-24 items-center justify-end">
-							<Link href="/drone" className="text-md font-medium hover:underline">
-								Drone
+							<Link href="/aircraft" className="text-md font-medium hover:underline">
+								Aircraft
 							</Link>
 							<Link href="/sponsor" className="text-md font-medium hover:underline">
 								Sponsor

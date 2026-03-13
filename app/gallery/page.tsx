@@ -10,7 +10,7 @@ export default function GalleryPage() {
 
     useEffect(() => {
         let mounted = true;
-        fetch("/api/gallery-images")
+        fetch("/api/images")
             .then((res) => res.json())
             .then((data: string[]) => {
                 if (!mounted) return;
@@ -48,9 +48,7 @@ export default function GalleryPage() {
                 setCurrentIndex((prev) => (prev + 1) % galleryPhotos.length);
             } else if (event.key === "ArrowLeft") {
                 setSwitchClass("gallery-switch-prev-in");
-                setCurrentIndex(
-                    (prev) => (prev - 1 + galleryPhotos.length) % galleryPhotos.length,
-                );
+                setCurrentIndex((prev) => (prev - 1 + galleryPhotos.length) % galleryPhotos.length);
             } else if (event.key === "Escape") {
                 setIsFullscreenMode(false);
             }
@@ -75,9 +73,7 @@ export default function GalleryPage() {
     const showPrevious = () => {
         if (galleryPhotos.length <= 1) return;
         setSwitchClass("gallery-switch-prev-in");
-        setCurrentIndex(
-            (prev) => (prev - 1 + galleryPhotos.length) % galleryPhotos.length,
-        );
+        setCurrentIndex((prev) => (prev - 1 + galleryPhotos.length) % galleryPhotos.length);
     };
 
     // Preload 6 next and 6 previous images. Should be a balance of performance and memory usage.
@@ -85,28 +81,26 @@ export default function GalleryPage() {
     const preloadIndices =
         galleryPhotos.length > 1
             ? Array.from(
-                new Set([
-                    ...Array.from(
-                        { length: Math.min(cacheSize, galleryPhotos.length - 1) },
-                        (_, offset) => (currentIndex + offset + 1) % galleryPhotos.length,
-                    ),
-                    ...Array.from(
-                        { length: Math.min(cacheSize, galleryPhotos.length - 1) },
-                        (_, offset) =>
-                            (currentIndex - (offset + 1) + galleryPhotos.length) %
-                            galleryPhotos.length,
-                    ),
-                ]),
-            )
+                  new Set([
+                      ...Array.from(
+                          { length: Math.min(cacheSize, galleryPhotos.length - 1) },
+                          (_, offset) => (currentIndex + offset + 1) % galleryPhotos.length,
+                      ),
+                      ...Array.from(
+                          { length: Math.min(cacheSize, galleryPhotos.length - 1) },
+                          (_, offset) =>
+                              (currentIndex - (offset + 1) + galleryPhotos.length) %
+                              galleryPhotos.length,
+                      ),
+                  ]),
+              )
             : [];
 
     return (
-        <main className="bg-black text-white font-sans min-h-full flex-1 px-4 md:px-24 md:py-16 py-8 flex flex-col">
-            <section className="mt-16 px-0 md:px-6 max-sm:mt-12">
+        <main className="bg-black text-white font-sans py-8">
+            <section className="px-0 md:px-6 max-sm:mt-12">
                 <div className="max-w-6xl mx-auto text-center">
-                    <h3 className="text-3xl md:text-5xl font-extrabold text-white mb-6">
-                        Gallery
-                    </h3>
+                    <h1>Gallery</h1>
                     <div className="mb-6 flex justify-center">
                         <button
                             type="button"
@@ -123,9 +117,7 @@ export default function GalleryPage() {
                                 height="24"
                                 alt=""
                             />
-                            {isFullscreenMode
-                                ? "Switch to Grid View"
-                                : "Switch to Fullscreen View"}
+                            {isFullscreenMode ? "Switch to Grid View" : "Switch to Fullscreen View"}
                         </button>
                     </div>
                     {isFullscreenMode ? (
@@ -186,10 +178,7 @@ export default function GalleryPage() {
                                 </div>
                                 {/* Used as a cache to have the browser preload images before they're clicked. */}
                                 {preloadIndices.length > 0 && (
-                                    <div
-                                        className="hidden"
-                                        aria-hidden="true"
-                                    >
+                                    <div className="hidden" aria-hidden="true">
                                         {preloadIndices.map((index) => (
                                             <Image
                                                 key={`preload-${index}`}
@@ -205,7 +194,6 @@ export default function GalleryPage() {
                                     </div>
                                 )}
                             </div>
-
                         </div>
                     ) : (
                         <div className="grid grid-cols-3 max-md:grid-cols-2 gap-2 sm:gap-3 md:gap-6">

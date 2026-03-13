@@ -16,8 +16,8 @@ export default function Footer(): React.ReactElement {
             <Link href="/gallery" className="text-sm hover:underline">
               Gallery
             </Link>
-            <Link href="/drone" className="text-sm hover:underline">
-              Drone
+            <Link href="/aircraft" className="text-sm hover:underline">
+              Aircraft
             </Link>
             <Link href="/sponsor" className="text-sm hover:underline">
               Sponsor
