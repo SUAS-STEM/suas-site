@@ -74,7 +74,9 @@ export default function AircraftPage() {
                         generations of students.
                     </p>
                     <h2>Images</h2>
-                    <p>To be added.</p>
+                    <p style={{ textAlign: "center" }}>
+                        <i>Some components of the aircraft may be hidden or blurred for confidentiality.</i>
+                    </p>
                     <div className="flex flex-col gap-8 mt-4">
                         {images.map((src) => (
                             <div key={src} className="w-full relative">
@@ -84,7 +86,12 @@ export default function AircraftPage() {
                                     width={0}
                                     height={0}
                                     sizes="100vw"
-                                    style={{ width: "100%", height: "auto", objectFit: "cover", borderRadius: "4px" }}
+                                    style={{
+                                        width: "100%",
+                                        height: "auto",
+                                        objectFit: "cover",
+                                        borderRadius: "4px",
+                                    }}
                                 />
                             </div>
                         ))}

@@ -166,6 +166,10 @@ p {
   line-height: 1.55;
 }
 
+.title {
+  font-size: 4rem;
+}
+
 table {
     border-collapse: separate;
     border-spacing: 0;

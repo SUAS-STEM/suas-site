@@ -9,9 +9,9 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           {/* Left: text content */}
           <div>
-            <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight leading-tight mb-2">SUAS@STEM</h1>
-            <h2>Tesla STEM High School</h2>
-            <p className="text-teal-300 font-medium mb-6 text-center">We're flying ahead.</p>
+            <h1 className="title tracking-tight leading-tight mb-2">SUAS</h1>
+            <h2 className="text-2xl md:text-3xl font-semibold mb-4">Tesla STEM High School</h2>
+            <p className="text-teal-300 font-medium mb-6">We're flying ahead.</p>
 
             <p className="text-gray-300 max-w-xl mb-8">
               SUAS@STEM is Tesla STEM High School's competition team for the RoboNation <a href="https://suas-competition.org/" target="blank">Student Unmanned Aerial Systems</a> (SUAS) competition. Our team designs and builds autonomous drones capable of performing complex real-world missions including navigation, computer vision, and payload delivery.
