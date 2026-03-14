@@ -89,8 +89,8 @@ export default function Navbar(): React.ReactElement {
 							<Link href="/gallery" className="text-md font-medium hover:underline" onClick={() => setIsMenuOpen(false)}>
 								Gallery
 							</Link>
-							<Link href="/drone" className="text-md font-medium hover:underline" onClick={() => setIsMenuOpen(false)}>
-								Drone
+							<Link href="/aircraft" className="text-md font-medium hover:underline" onClick={() => setIsMenuOpen(false)}>
+								Aircraft
 							</Link>
 							<Link href="/sponsor" className="text-md font-medium hover:underline" onClick={() => setIsMenuOpen(false)}>
 								Sponsor
