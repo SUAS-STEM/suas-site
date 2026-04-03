@@ -11,10 +11,14 @@ export default function AircraftPage() {
             .then((data: string[]) => setImages(data));
     }, []);
 
-    const specs: [string, string][] = [
+    const highlightedSpecs: [string, string][] = [
         ["Tip-to-Tip Diameter", "2.1 m (7 ft)"],
-        ["Weight", "7.7 kg (17 lbs)"],
         ["Specific Thrust Efficiency", "10.47 g/W"],
+        ["Hover Flight Time", "59.2 min"],
+    ];
+
+    const specs: [string, string][] = [
+        ["Weight", "7.7 kg (17 lbs)"],
         ["Cruise Speed", "25 kph (15 mph)"],
         ["Hover Flight Time", "59.2 min"],
         ["Conservative Range", "8.6 km (5.3 mi)"],
@@ -39,8 +43,19 @@ export default function AircraftPage() {
                         towards efficiency and mission capability.
                     </p>
 
-                    <h3>Key Specifications</h3>
+                    <h2>Key Specifications</h2>
 
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", width: "100%" }}>
+                        {highlightedSpecs.map((spec) => (
+                            <div
+                                key={spec[0]}
+                                className="spec-card"
+                            >
+                                <p style={{ margin: 0, fontSize: "36px" }}>{spec[1]}</p>
+                                <p style={{ margin: 0 }}>{spec[0]}</p>
+                            </div>
+                        ))}
+                    </div>
                     <table>
                         <thead>
                             <tr>
@@ -75,7 +90,10 @@ export default function AircraftPage() {
                     </p>
                     <h2>Images</h2>
                     <p style={{ textAlign: "center" }}>
-                        <i>Images are shown for illustrative purposes only and may not reflect the current state of the aircraft.</i>
+                        <i>
+                            Images are shown for illustrative purposes only and may not reflect the
+                            current state of the aircraft.
+                        </i>
                     </p>
                     <div className="flex flex-col gap-8 mt-4">
                         {images.map((src) => (
