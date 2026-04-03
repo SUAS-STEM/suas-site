@@ -75,7 +75,7 @@ export default function AircraftPage() {
                     </p>
                     <h2>Images</h2>
                     <p style={{ textAlign: "center" }}>
-                        <i>Some components of the aircraft may be hidden or blurred for confidentiality.</i>
+                        <i>Images are shown for illustrative purposes only and may not reflect the current state of the aircraft.</i>
                     </p>
                     <div className="flex flex-col gap-8 mt-4">
                         {images.map((src) => (
