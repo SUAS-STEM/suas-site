@@ -5,7 +5,6 @@ import "./globals.css";
 import Navbar from "../components/Header";
 import Footer from "../components/Footer";
 import Loader from "../components/Loader";
-import PageTransition from "../components/PageTransition";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,7 +40,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${exo.variable} antialiased flex flex-col bg-black text-white min-h-screen`}
       >
   <Loader />
-  <PageTransition />
         <Navbar />
         <div className="flex-1 flex flex-col grow bg-black">
           {children}
