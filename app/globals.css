@@ -151,12 +151,16 @@ h1 {
   text-shadow: var(--text-shadow);
 }
 
+.title {
+  font-size: 72pt;
+  margin-bottom: 0px !important;
+}
+
 h2 {
-  margin-top: 20px;
   margin-bottom: 20px;
   text-align: center;
   font-size: 2rem;
-text-shadow: var(--text-shadow);
+  text-shadow: var(--text-shadow);
 }
 
 h3 {
@@ -170,10 +174,6 @@ h3 {
 p {
   margin-bottom: 16px;
   line-height: 1.55;
-}
-
-.title {
-  font-size: 4rem;
 }
 
 .spec-card {
