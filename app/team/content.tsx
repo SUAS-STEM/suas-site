@@ -94,7 +94,12 @@ const sections: { title: string; description: string; members: Member[] }[] = [
                 rank: Rank.PM,
                 about: `I am Karthik, a current junior at Tesla STEM highschool. Inside of SUAS I prefer taking a lot of top-level CAD roles and helping with general drone assembly. In planning to become an aerospace engineer SUAS has offered rigorous yet valuable experiences as I prepare for life beyond highschool. Other than SUAS, I enjoy reading various science fiction novels and building robots!`,
             },
-            { name: "Pratham Koka", grade: 9, rank: Rank.Member },
+            {
+                name: "Pratham Koka",
+                grade: 9,
+                rank: Rank.Member,
+                about: `I'm a hardworking and energetic member of SUAS at STEM and I like to do robotics and design drones. I am easygoing and fun in general and I am very social as well. I like to ski and hang out with my friends. On SUAS at STEM, I primarily work on CAD, manufacturing, and hardware. I spend a lot of my time designing aircraft and robotic systems such as UAVs, arms, and more. On EH-3 I was one of the main CAD members and I also helped layout and place avionics, structure, and power systems.`,
+            },
             {
                 name: "Avnish Dighe",
                 grade: 12,
@@ -102,7 +107,13 @@ const sections: { title: string; description: string; members: Member[] }[] = [
                 about: `Hi there!
 My name is Avnish Dighe, a Senior at Tesla STEM High School heading to UC Berkeley for Civil & Mechanical Engineering. I enjoy taking on challenging projects and seeking new opportunities to further my knowledge in these exciting fields. On a personal note, I am an Eagle Scout and 3rd Degree Black Belt in Taekwondo. In my free time I enjoy camping, training, and playing guitar. I'm excited to make this thing fly!`,
             },
-            { name: "Zifeng (Jeff) Gao", grade: 12, rank: Rank.Member },
+            {
+                name: "Zifeng (Jeff) Gao",
+                grade: 12,
+                rank: Rank.Member,
+                about: `Hi, I'm Jeff, and I am severely addicted to Computer Aided Design. As a senior in SUAS, I bring years of competition experience in FIRST robotics and ARC rocketry to assist the team in designing the EH-3 drone. My insights have helped us select parts, evaluate CAD programs and workflow, and producing reliable 3D printed mounts for the landing gear and the Here4 navigation module. Outside of STEM, I spend my time playing multiplayer Minecraft, alternating between modded worlds (currently playing Elysium Days) and minigame servers – although lately I’ve been venturing around Seattle on public transit and rediscovering my love for exploration.
+As always, I’m still learning and growing, and I'm looking forward to attending the University of Washington as a Mechanical Engineering major (30')`,
+            },
         ],
     },
     {
@@ -127,7 +138,7 @@ My name is Avnish Dighe, a Senior at Tesla STEM High School heading to UC Berkel
                 rank: Rank.Member,
                 about: `I'm Akanksha, and I work with the electronic components of the drone. If you see any soldering work, it was most likely done by me or Yu Tane. I think I've inhaled more fumes from that than the oxygen I breathe. When I'm not soldering, I'm probably playing the drums, dying in survival Minecraft, or drawing. SUAS has really helped me grow my teamwork skills--I've never been in this large of a team where everyone has such varied roles. It's also helped me connect with people that I'd otherwise probably never get close to. I'm super excited to keep working and get this drone into the sky!`,
             },
-            { name: "Max Xie", grade: 11, rank: Rank.Member },
+            { name: "Max Xie", grade: 11, rank: Rank.Member, about: `hello my name is max xie, i am a 11th grader and a member of the avionics team for SUAS. I do cad, coding, and math, and I'm interested in aerospace systems. I aspire to become an engineer. I am excited to be combining my skills to help SUAS at STEM build our UAV for the contest. Outside of SUAS, I enjoy running and making model kits.` },
             { name: "Advay Midha", grade: 10, rank: Rank.Member },
         ],
     },
@@ -189,7 +200,7 @@ In general, I'm someone who enjoys learning by doing and working with others to 
                 rank: Rank.PM,
                 about: `Hello! My name is Timothy An, and I'm currently a sophomore at Tesla STEM High School with aspirations in aerospace/mechanical engineering. Outside of SUAS, I also compete on a private team in VEX V5 Robotics and am a part of my school's TARC (The American Rocketry Challenge) team. Besides conventional engineering activities, I also participate in the Technology Student Association, where I combine my passions with creating and leadership. Artistically, I play both the bassoon and contrabassoon in various ensembles including the Seattle Youth Symphony Orchestra, WMEA's various All-State Honor Groups, and compete in numerous regional and state festivals.`,
             },
-            { name: "Ved Agrawal", grade: 9, rank: Rank.Member },
+            { name: "Ved Agrawal", grade: 9, rank: Rank.Member, about: `Hi, I'm Ved Agrawal, and I work on Documentation for the SUAS team. My role is centered on ensuring our technical processes and progress are captured with precision, but my passion for engineering goes far beyond this. When I'm not working on SUAS work, you can find me working on mathematics, robotics, physics or making my own FPV drones. From making high-utility custom quads to carry an array of payloads to targets or grinding for the next robotics tournament.` },
         ],
     },
 ];
