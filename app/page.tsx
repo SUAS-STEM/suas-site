@@ -63,6 +63,7 @@ export default function Home() {
                                     src="/images/image-0.png"
                                     alt="SUAS team photo"
                                     fill
+                                    sizes="(max-width: 768px) 16rem, 20rem"
                                     className="object-cover"
                                 />
                             </div>

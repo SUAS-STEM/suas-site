@@ -138,7 +138,12 @@ As always, I’m still learning and growing, and I'm looking forward to attendin
                 rank: Rank.Member,
                 about: `I'm Akanksha, and I work with the electronic components of the drone. If you see any soldering work, it was most likely done by me or Yu Tane. I think I've inhaled more fumes from that than the oxygen I breathe. When I'm not soldering, I'm probably playing the drums, dying in survival Minecraft, or drawing. SUAS has really helped me grow my teamwork skills--I've never been in this large of a team where everyone has such varied roles. It's also helped me connect with people that I'd otherwise probably never get close to. I'm super excited to keep working and get this drone into the sky!`,
             },
-            { name: "Max Xie", grade: 11, rank: Rank.Member, about: `hello my name is max xie, i am a 11th grader and a member of the avionics team for SUAS. I do cad, coding, and math, and I'm interested in aerospace systems. I aspire to become an engineer. I am excited to be combining my skills to help SUAS at STEM build our UAV for the contest. Outside of SUAS, I enjoy running and making model kits.` },
+            {
+                name: "Max Xie",
+                grade: 11,
+                rank: Rank.Member,
+                about: `hello my name is max xie, i am a 11th grader and a member of the avionics team for SUAS. I do cad, coding, and math, and I'm interested in aerospace systems. I aspire to become an engineer. I am excited to be combining my skills to help SUAS at STEM build our UAV for the contest. Outside of SUAS, I enjoy running and making model kits.`,
+            },
             { name: "Advay Midha", grade: 10, rank: Rank.Member },
         ],
     },
@@ -200,7 +205,12 @@ In general, I'm someone who enjoys learning by doing and working with others to 
                 rank: Rank.PM,
                 about: `Hello! My name is Timothy An, and I'm currently a sophomore at Tesla STEM High School with aspirations in aerospace/mechanical engineering. Outside of SUAS, I also compete on a private team in VEX V5 Robotics and am a part of my school's TARC (The American Rocketry Challenge) team. Besides conventional engineering activities, I also participate in the Technology Student Association, where I combine my passions with creating and leadership. Artistically, I play both the bassoon and contrabassoon in various ensembles including the Seattle Youth Symphony Orchestra, WMEA's various All-State Honor Groups, and compete in numerous regional and state festivals.`,
             },
-            { name: "Ved Agrawal", grade: 9, rank: Rank.Member, about: `Hi, I'm Ved Agrawal, and I work on Documentation for the SUAS team. My role is centered on ensuring our technical processes and progress are captured with precision, but my passion for engineering goes far beyond this. When I'm not working on SUAS work, you can find me working on mathematics, robotics, physics or making my own FPV drones. From making high-utility custom quads to carry an array of payloads to targets or grinding for the next robotics tournament.` },
+            {
+                name: "Ved Agrawal",
+                grade: 9,
+                rank: Rank.Member,
+                about: `Hi, I'm Ved Agrawal, and I work on Documentation for the SUAS team. My role is centered on ensuring our technical processes and progress are captured with precision, but my passion for engineering goes far beyond this. When I'm not working on SUAS work, you can find me working on mathematics, robotics, physics or making my own FPV drones. From making high-utility custom quads to carry an array of payloads to targets or grinding for the next robotics tournament.`,
+            },
         ],
     },
 ];
