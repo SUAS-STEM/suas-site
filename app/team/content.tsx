@@ -381,14 +381,7 @@ export default function TeamContent(): ReactElement {
             <main style={styles.page} className="font-sans">
                 <section style={styles.hero}>
                     <div style={{ maxWidth: 900, margin: "0 auto" }}>
-                        <div
-                            style={{
-                                color: "var(--foreground)",
-                                fontWeight: 700,
-                                fontSize: "0.95rem",
-                                marginBottom: 8,
-                            }}
-                        >
+                        <div className="eyebrow eyebrow--center" style={{ marginBottom: 14 }}>
                             SUAS @Tesla STEM High School
                         </div>
                         <h1 style={styles.heroTitle}>The Flight Crew</h1>

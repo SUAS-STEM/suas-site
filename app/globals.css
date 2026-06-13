@@ -3,8 +3,9 @@
 :root {
   --primary: #189a9f;
   --primary-light: #4fd1d5;
-  --background: #0a0a0a;
+  --background: #07090b;
   --foreground: #ededed;
+  --grid-line: rgba(255, 255, 255, 0.025);
   --border: 1px solid rgba(255, 255, 255, 0.18);
   --border-thick: 2px solid rgba(255, 255, 255, 0.18);
   --gradient: linear-gradient(135deg, #313131 0%, #111 55%, #0b0b0b 100%) !important;
@@ -22,9 +23,59 @@
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+/* Fixed technical backdrop: a faint blueprint grid under a soft teal horizon
+   glow. Sits behind all content; pages must not paint opaque backgrounds over
+   it (mains are transparent). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(60rem 32rem at 50% -8%, rgba(24, 154, 159, 0.12), transparent 72%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 100% 100%, 48px 48px, 48px 48px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%);
+}
+
+/* Monospace eyebrow label with a leading tick — the technical kicker used
+   above section titles across the site. */
+.eyebrow {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--primary-light);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.eyebrow::before {
+  content: "";
+  width: 1.75rem;
+  height: 1px;
+  background: var(--primary);
+}
+
+.eyebrow--center {
+  justify-content: center;
+}
+
+.eyebrow--center::after {
+  content: "";
+  width: 1.75rem;
+  height: 1px;
+  background: var(--primary);
 }
 
 /* Loader styles */
@@ -178,11 +229,61 @@ p {
 
 .spec-card {
   flex: 1 1 200px;
-  background: var(--gradient2);
-  box-shadow: var(--shadow);
-  padding: 10px;
-  text-align: center;
-  border-radius: 10px;
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid var(--primary);
+  padding: 1.1rem 1rem;
+  text-align: left;
+  border-radius: 8px;
+}
+
+.spec-card .spec-value {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.spec-card .spec-label {
+  margin: 0.4rem 0 0;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Corner-bracket frame for the hero photo — reads as a viewfinder/technical
+   reticle rather than a plain rounded image. */
+.hero-frame {
+  position: relative;
+}
+
+.hero-frame::before,
+.hero-frame::after {
+  content: "";
+  position: absolute;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--primary-light);
+  z-index: 2;
+}
+
+.hero-frame::before {
+  top: -6px;
+  left: -6px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.hero-frame::after {
+  bottom: -6px;
+  right: -6px;
+  border-left: 0;
+  border-top: 0;
 }
 
 table {

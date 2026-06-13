@@ -24,7 +24,7 @@ export default function AircraftPage() {
         ["Conservative Range", "8.6 km (5.3 mi)"],
     ];
     return (
-        <main className="bg-black text-white font-sans min-h-full flex-1 px-4 md:px-24 md:py-16 py-8 flex flex-col">
+        <main className="text-white font-sans min-h-full flex-1 px-4 md:px-24 md:py-16 py-8 flex flex-col">
             <section className="px-0 md:px-6 max-sm:mt-12">
                 <div style={{ maxWidth: 900, margin: "0 auto" }}>
                     <h1>Event Horizon-3</h1>
@@ -47,12 +47,9 @@ export default function AircraftPage() {
 
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", width: "100%" }}>
                         {highlightedSpecs.map((spec) => (
-                            <div
-                                key={spec[0]}
-                                className="spec-card"
-                            >
-                                <p style={{ margin: 0, fontSize: "36px" }}>{spec[1]}</p>
-                                <p style={{ margin: 0 }}>{spec[0]}</p>
+                            <div key={spec[0]} className="spec-card">
+                                <p className="spec-value">{spec[1]}</p>
+                                <p className="spec-label">{spec[0]}</p>
                             </div>
                         ))}
                     </div>

@@ -12,6 +12,12 @@ export async function GET(request: Request) {
         const exts = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"]);
         const images = files
             .filter((f) => exts.has(path.extname(f).toLowerCase()))
+            // Newest file first, oldest last (by last-modified time).
+            .sort(
+                (a, b) =>
+                    fs.statSync(path.join(imagesDir, b)).mtimeMs -
+                    fs.statSync(path.join(imagesDir, a)).mtimeMs,
+            )
             .map((f) => `/images/${folder}/${f}`);
 
         return new Response(JSON.stringify(images), {

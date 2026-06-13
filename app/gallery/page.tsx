@@ -97,7 +97,7 @@ export default function GalleryPage() {
             : [];
 
     return (
-        <main className="bg-black text-white font-sans py-8">
+        <main className="text-white font-sans py-8">
             <section className="px-0 md:px-6 max-sm:mt-12">
                 <div className="max-w-6xl mx-auto text-center">
                     <h1>Gallery</h1>

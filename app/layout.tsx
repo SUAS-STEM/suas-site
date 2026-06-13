@@ -41,7 +41,7 @@ export default function RootLayout({
       >
   <Loader />
         <Navbar />
-        <div className="flex-1 flex flex-col grow bg-black">
+        <div className="flex-1 flex flex-col grow">
           {children}
         </div>
         <Footer />
