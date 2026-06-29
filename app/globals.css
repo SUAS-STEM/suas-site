@@ -399,6 +399,69 @@ p a {
   cursor: pointer;
 }
 
+.past-members-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.2);
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  color: #e0e0e0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+
+.past-members-toggle:hover {
+  color: var(--foreground);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.past-members-chevron {
+  display: inline-block;
+  transition: transform 0.3s ease;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.past-members-chevron.open {
+  transform: rotate(180deg);
+}
+
+.past-members-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.4s ease, opacity 0.35s ease;
+}
+
+.past-members-body--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.past-members-body > div {
+  overflow: hidden;
+}
+
+.past-member-photo {
+  filter: grayscale(60%);
+  opacity: 0.8;
+  transition: filter 250ms ease, opacity 250ms ease;
+}
+
+.member-card:hover .past-member-photo {
+  filter: grayscale(0%);
+  opacity: 1;
+}
+
 .member-photo-wrap {
   transition: box-shadow 300ms ease, transform 300ms ease;
 }
@@ -423,6 +486,12 @@ p a {
   border: 0;
   background: transparent;
   cursor: pointer;
+  transition: background 200ms ease;
+}
+
+.member-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
 }
 
 .member-backdrop {
@@ -562,7 +631,7 @@ p a {
 
 .member-data {
   display: flex;
-  align-items: left;
+  align-items: center;
   gap: 0.45rem;
 }
 

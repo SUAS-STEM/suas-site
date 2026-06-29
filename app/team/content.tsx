@@ -5,9 +5,9 @@ import { useEffect, useCallback, useState, ReactElement, useMemo, CSSProperties 
 
 enum Rank {
     Member = "Member",
-    PM = "Project Manager",
+    Lead = "Lead",
     OperationsLead = "Operations Lead",
-    Lead = "Lead Project Manager",
+    TeamLead = "Lead Project Manager",
 }
 
 type Member = {
@@ -24,9 +24,9 @@ function getMemberImageSrc(name: string): string {
 
 function getRole(rank: Rank, subsystem?: string): string {
     if (rank === Rank.Member) return `${subsystem ?? ""} Member`.trim();
-    if (rank === Rank.PM) return `${subsystem ?? ""} PM`.trim();
+    if (rank === Rank.Lead) return `${subsystem ?? ""} Lead`.trim();
     if (rank === Rank.OperationsLead) return "Operations Lead";
-    if (rank === Rank.Lead) return "Lead Project Manager";
+    if (rank === Rank.TeamLead) return "Lead Project Manager";
     return rank;
 }
 const subsystemIcons: Record<string, string> = {
@@ -72,7 +72,7 @@ const sections: { title: string; description: string; members: Member[] }[] = [
             {
                 name: "Wenxin Fang",
                 grade: 10,
-                rank: Rank.Lead,
+                rank: Rank.TeamLead,
                 about: `I lead SUAS@STEM, focusing on systems integration and avionics development. I'm an aspiring aerospace engineer with an interest in electromechanical systems. Together with the team, we strive to build an environment where we push through adversity and come out stronger than before. When I'm not building autonomous systems or leading a team, you can find me baking a batch of chocolate chip cookies or enjoying the natural beauty of the PNW!`,
             },
             {
@@ -91,7 +91,7 @@ const sections: { title: string; description: string; members: Member[] }[] = [
             {
                 name: "Karthik Rajagopal",
                 grade: 11,
-                rank: Rank.PM,
+                rank: Rank.Lead,
                 about: `I am Karthik, a current junior at Tesla STEM highschool. Inside of SUAS I prefer taking a lot of top-level CAD roles and helping with general drone assembly. In planning to become an aerospace engineer SUAS has offered rigorous yet valuable experiences as I prepare for life beyond highschool. Other than SUAS, I enjoy reading various science fiction novels and building robots!`,
             },
             {
@@ -99,20 +99,6 @@ const sections: { title: string; description: string; members: Member[] }[] = [
                 grade: 9,
                 rank: Rank.Member,
                 about: `I'm a hardworking and energetic member of SUAS at STEM and I like to do robotics and design drones. I am easygoing and fun in general and I am very social as well. I like to ski and hang out with my friends. On SUAS at STEM, I primarily work on CAD, manufacturing, and hardware. I spend a lot of my time designing aircraft and robotic systems such as UAVs, arms, and more. On EH-3 I was one of the main CAD members and I also helped layout and place avionics, structure, and power systems.`,
-            },
-            {
-                name: "Avnish Dighe",
-                grade: 12,
-                rank: Rank.Member,
-                about: `Hi there!
-My name is Avnish Dighe, a Senior at Tesla STEM High School heading to UC Berkeley for Civil & Mechanical Engineering. I enjoy taking on challenging projects and seeking new opportunities to further my knowledge in these exciting fields. On a personal note, I am an Eagle Scout and 3rd Degree Black Belt in Taekwondo. In my free time I enjoy camping, training, and playing guitar. I'm excited to make this thing fly!`,
-            },
-            {
-                name: "Zifeng (Jeff) Gao",
-                grade: 12,
-                rank: Rank.Member,
-                about: `Hi, I'm Jeff, and I am severely addicted to Computer Aided Design. As a senior in SUAS, I bring years of competition experience in FIRST robotics and ARC rocketry to assist the team in designing the EH-3 drone. My insights have helped us select parts, evaluate CAD programs and workflow, and producing reliable 3D printed mounts for the landing gear and the Here4 navigation module. Outside of STEM, I spend my time playing multiplayer Minecraft, alternating between modded worlds (currently playing Elysium Days) and minigame servers – although lately I’ve been venturing around Seattle on public transit and rediscovering my love for exploration.
-As always, I’m still learning and growing, and I'm looking forward to attending the University of Washington as a Mechanical Engineering major (30')`,
             },
         ],
     },
@@ -123,7 +109,7 @@ As always, I’m still learning and growing, and I'm looking forward to attendin
             {
                 name: "Ivana Mohapatra",
                 grade: 10,
-                rank: Rank.PM,
+                rank: Rank.Lead,
                 about: `My name is Ivana Mohapatra and I'm an engineer and graphic designer. I'm 16 years old and a sophomore at Tesla STEM high school, part of the SUAS team's Avionics subdivision. In my free time, I love biking sketching hyper realistic images, and walking all my friends' dogs since I have none of my own.`,
             },
             {
@@ -152,14 +138,6 @@ As always, I’m still learning and growing, and I'm looking forward to attendin
         description: "The Autopilot subsystem develops software for autonomous flight.",
         members: [
             {
-                name: "Inesh Dey",
-                grade: 12,
-                rank: Rank.PM,
-                about: `Hello, I'm Inesh Dey, and I'm an avid programmer, who plans to major in Computer Science and/or Engineering. I've been doing robotics for a few years now, having competed in FTC for two, and I've also been involved in volunteering for Ignite Robotics events. I've had experience working with pathing, as well as implementing YOLO (You Only Look Once) models for object detection.
-
-Outside of robotics, and in my free time, I enjoy playing soccer, the guitar (mainly classical), working on personal coding/tech projects and video games. I've repaired and built PCs (including my own), and I love to tinker with tech in general.`,
-            },
-            {
                 name: "Jeswanth Sri Sai Battula",
                 grade: 10,
                 rank: Rank.Member,
@@ -168,7 +146,7 @@ Outside of robotics, and in my free time, I enjoy playing soccer, the guitar (ma
             {
                 name: "Ethan Chan",
                 grade: 10,
-                rank: Rank.Member,
+                rank: Rank.Lead,
                 about: `Hi, I'm Ethan. I serve as an autopilot team member for SUAS@STEM and am passionate about STEM, especially software and engineering. I have experience with C++ and Python, optimizing performance across hardware multicore, GPU, and SIMD architectures. Since the age of nine, I've developed a variety of apps, technical utilities, and games. Besides software, I apply my skills in SolidWorks, Autodesk Fusion, Blender, and Autodesk Maya in other projects. Outside of STEM, I play piano and violin, swim, and enjoy exploring nature. My goal is to integrate all my engineering skills into projects that push the limits of  technology and design.`,
             },
         ],
@@ -180,7 +158,7 @@ Outside of robotics, and in my free time, I enjoy playing soccer, the guitar (ma
             {
                 name: "Neel Nevrekar",
                 grade: 10,
-                rank: Rank.PM,
+                rank: Rank.Lead,
                 about: `Hi! I'm Neel, and I enjoy working on projects that combine teamwork, problem-solving, and real-world impact. In this team, I serve as the imaging project lead. In this role, I help collect and organize datasets and work on training models that allow our system to recognize the mannequin during autonomous missions. I enjoy the collaborative nature of the work, especially brainstorming solutions with teammates and seeing ideas come together through testing and iteration.
 
 Beyond SUAS, I love mentoring younger students and being involved in activities that encourage curiosity and hands-on learning. I've spent time mentoring middle school robotics teams and enjoy helping students build confidence while exploring new challenges. I'm also interested in design and enjoy contributing creatively to projects, especially when they have a meaningful purpose.
@@ -202,7 +180,7 @@ In general, I'm someone who enjoys learning by doing and working with others to 
             {
                 name: "Timothy An",
                 grade: 10,
-                rank: Rank.PM,
+                rank: Rank.Lead,
                 about: `Hello! My name is Timothy An, and I'm currently a sophomore at Tesla STEM High School with aspirations in aerospace/mechanical engineering. Outside of SUAS, I also compete on a private team in VEX V5 Robotics and am a part of my school's TARC (The American Rocketry Challenge) team. Besides conventional engineering activities, I also participate in the Technology Student Association, where I combine my passions with creating and leadership. Artistically, I play both the bassoon and contrabassoon in various ensembles including the Seattle Youth Symphony Orchestra, WMEA's various All-State Honor Groups, and compete in numerous regional and state festivals.`,
             },
             {
@@ -212,6 +190,34 @@ In general, I'm someone who enjoys learning by doing and working with others to 
                 about: `Hi, I'm Ved Agrawal, and I work on Documentation for the SUAS team. My role is centered on ensuring our technical processes and progress are captured with precision, but my passion for engineering goes far beyond this. When I'm not working on SUAS work, you can find me working on mathematics, robotics, physics or making my own FPV drones. From making high-utility custom quads to carry an array of payloads to targets or grinding for the next robotics tournament.`,
             },
         ],
+    },
+];
+
+const pastMembers: (Member & { subsystem: string })[] = [
+    {
+        name: "Avnish Dighe",
+        grade: 12,
+        rank: Rank.Member,
+        subsystem: "Flight",
+        about: `Hi there!
+My name is Avnish Dighe, a Senior at Tesla STEM High School heading to UC Berkeley for Civil & Mechanical Engineering. I enjoy taking on challenging projects and seeking new opportunities to further my knowledge in these exciting fields. On a personal note, I am an Eagle Scout and 3rd Degree Black Belt in Taekwondo. In my free time I enjoy camping, training, and playing guitar. I'm excited to make this thing fly!`,
+    },
+    {
+        name: "Zifeng (Jeff) Gao",
+        grade: 12,
+        rank: Rank.Member,
+        subsystem: "Flight",
+        about: `Hi, I'm Jeff, and I am severely addicted to Computer Aided Design. As a senior in SUAS, I bring years of competition experience in FIRST robotics and ARC rocketry to assist the team in designing the EH-3 drone. My insights have helped us select parts, evaluate CAD programs and workflow, and producing reliable 3D printed mounts for the landing gear and the Here4 navigation module. Outside of STEM, I spend my time playing multiplayer Minecraft, alternating between modded worlds (currently playing Elysium Days) and minigame servers – although lately I've been venturing around Seattle on public transit and rediscovering my love for exploration.
+As always, I'm still learning and growing, and I'm looking forward to attending the University of Washington as a Mechanical Engineering major (30')`,
+    },
+    {
+        name: "Inesh Dey",
+        grade: 12,
+        rank: Rank.Lead,
+        subsystem: "Autopilot",
+        about: `Hello, I'm Inesh Dey, and I'm an avid programmer, who plans to major in Computer Science and/or Engineering. I've been doing robotics for a few years now, having competed in FTC for two, and I've also been involved in volunteering for Ignite Robotics events. I've had experience working with pathing, as well as implementing YOLO (You Only Look Once) models for object detection.
+
+Outside of robotics, and in my free time, I enjoy playing soccer, the guitar (mainly classical), working on personal coding/tech projects and video games. I've repaired and built PCs (including my own), and I love to tinker with tech in general.`,
     },
 ];
 
@@ -296,21 +302,26 @@ const styles: Record<string, CSSProperties> = {
     },
     role: {
         fontSize: "0.86rem",
-        color: "#cfcfcf",
+        color: "var(--primary-light)",
     },
 };
 
 export default function TeamContent(): ReactElement {
     const MODAL_TRANSITION_MS = 300;
     const [isOpen, setIsOpen] = useState(false);
+    const [pastOpen, setPastOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
     const [switchClass, setSwitchClass] = useState("");
     const [selectedMember, setSelectedMember] = useState<Member | null>(null);
     const allMembers = useMemo(
-        () =>
-            sections.flatMap((section) =>
-                section.members.map((member) => ({ ...member, subsystem: section.title })),
+        () => [
+            ...sections.flatMap((section) =>
+                [...section.members]
+                    .sort((a, b) => (a.rank === Rank.Lead ? -1 : b.rank === Rank.Lead ? 1 : 0))
+                    .map((member) => ({ ...member, subsystem: section.title })),
             ),
+            ...pastMembers,
+        ],
         [],
     );
 
@@ -409,7 +420,7 @@ export default function TeamContent(): ReactElement {
                         <p style={styles.sectionDescription}>{sec.description}</p>
 
                         <div style={styles.grid}>
-                            {sec.members.map((m) => (
+                            {[...sec.members].sort((a, b) => (a.rank === Rank.Lead ? -1 : b.rank === Rank.Lead ? 1 : 0)).map((m) => (
                                 <button
                                     key={m.name}
                                     type="button"
@@ -427,13 +438,52 @@ export default function TeamContent(): ReactElement {
                                     </div>
                                     <div style={styles.name}>{m.name}</div>
                                     {m.rank !== Rank.Member && (
-                                        <div style={styles.role}>{m.rank}</div>
+                                        <div style={styles.role}>{getRole(m.rank, sec.title)}</div>
                                     )}
                                 </button>
                             ))}
                         </div>
                     </section>
                 ))}
+                <section style={{ ...styles.section, marginTop: "4rem" }}>
+                    <button
+                        type="button"
+                        onClick={() => setPastOpen((o) => !o)}
+                        className="past-members-toggle"
+                    >
+                        <span className={`past-members-chevron ${pastOpen ? "open" : ""}`}>▾</span>
+                        <span>Past Members</span>
+                        <span className={`past-members-chevron ${pastOpen ? "open" : ""}`}>▾</span>
+                    </button>
+                    <div
+                        className={`past-members-body ${pastOpen ? "past-members-body--open" : ""}`}
+                    >
+                        <div style={styles.grid}>
+                            {pastMembers.map((m) => (
+                                <button
+                                    key={m.name}
+                                    type="button"
+                                    style={styles.card}
+                                    className="member-card"
+                                    onClick={() => {
+                                        setSelectedMember(m);
+                                        setIsClosing(false);
+                                        setSwitchClass("");
+                                        setIsOpen(true);
+                                    }}
+                                >
+                                    <div style={styles.photoWrap} className="member-photo-wrap">
+                                        <MemberPhoto name={m.name} className="min-w-64 past-member-photo" />
+                                    </div>
+                                    <div style={styles.name}>{m.name}</div>
+                                    {m.rank !== Rank.Member && (
+                                        <div style={styles.role}>{getRole(m.rank, m.subsystem)}</div>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </section>
             </main>
 
             {isOpen && selectedMember ? (
