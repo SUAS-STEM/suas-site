@@ -83,7 +83,7 @@ export default function SsgcsPage() {
                             <span className="ml-3">
                                 <span className="block font-semibold">Windows (x86)</span>
                                 <span className="text-sm text-white/60">
-                                    For 32-bit and 64-bit Windows systems
+                                    For 64-bit Intel and AMD processors
                                 </span>
                             </span>
                         </label>
