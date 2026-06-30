@@ -9,10 +9,11 @@ interface ReleaseInfo {
 
 const PLATFORM_ASSET: Record<string, string> = {
     "windows-x86": "ssgcs-win32-amd64.exe",
+    "macos-arm64": "ssgcs-macos-arm64.dmg",
 };
 
 export default function SsgcsPage() {
-    const [selectedPlatform, setSelectedPlatform] = useState<"windows-x86" | null>("windows-x86");
+    const [selectedPlatform, setSelectedPlatform] = useState<"windows-x86" | "macos-arm64" | null>("windows-x86");
     const [release, setRelease] = useState<ReleaseInfo | null>(null);
 
     useEffect(() => {
@@ -76,7 +77,7 @@ export default function SsgcsPage() {
                                 value="windows-x86"
                                 checked={selectedPlatform === "windows-x86"}
                                 onChange={(e) =>
-                                    setSelectedPlatform(e.target.value as "windows-x86")
+                                    setSelectedPlatform(e.target.value as "windows-x86" | "macos-arm64")
                                 }
                                 className="w-4 h-4"
                             />
@@ -84,6 +85,33 @@ export default function SsgcsPage() {
                                 <span className="block font-semibold">Windows (x86)</span>
                                 <span className="text-sm text-white/60">
                                     For 64-bit Intel and AMD processors
+                                </span>
+                            </span>
+                        </label>
+
+                        <label
+                            className="flex items-center p-4 border border-white/30 rounded-lg cursor-pointer hover:bg-white/5 transition"
+                            style={{
+                                backgroundColor:
+                                    selectedPlatform === "macos-arm64"
+                                        ? "rgba(255, 255, 255, 0.1)"
+                                        : "transparent",
+                            }}
+                        >
+                            <input
+                                type="radio"
+                                name="platform"
+                                value="macos-arm64"
+                                checked={selectedPlatform === "macos-arm64"}
+                                onChange={(e) =>
+                                    setSelectedPlatform(e.target.value as "windows-x86" | "macos-arm64")
+                                }
+                                className="w-4 h-4"
+                            />
+                            <span className="ml-3">
+                                <span className="block font-semibold">macOS (Apple Silicon)</span>
+                                <span className="text-sm text-white/60">
+                                    For Apple M-series processors
                                 </span>
                             </span>
                         </label>
