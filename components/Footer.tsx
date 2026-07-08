@@ -28,6 +28,15 @@ export default function Footer(): React.ReactElement {
             © {new Date().getFullYear()} SUAS@STEM • All rights reserved.
           </div>
 
+          <div className="flex gap-4 items-center">
+            <a
+              href="https://dev.suasstem.org"
+              className="text-xs text-white/30 hover:text-white/60 transition font-mono"
+            >
+              dev
+            </a>
+          </div>
+
           {/* <div className="flex gap-4 items-center">
             <a href="#" aria-label="Twitter" className="text-sm hover:underline">
               Twitter
