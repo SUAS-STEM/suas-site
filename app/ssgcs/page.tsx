@@ -176,7 +176,7 @@ export default function SsgcsPage() {
                             </tr>
                             <tr>
                                 <td>RAM</td>
-                                <td>4 GB</td>
+                                <td>300 MB free</td>
                                 <td>16 GB</td>
                             </tr>
                             <tr>
