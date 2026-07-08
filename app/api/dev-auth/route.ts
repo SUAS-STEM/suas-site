@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 10;
 
 const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -24,37 +24,50 @@ function makeToken(password: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
-  if (isRateLimited(ip)) {
-    return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
+  const contentType = req.headers.get("content-type") ?? "";
+  let password = "";
+  let redirect = "/";
+
+  if (contentType.includes("application/x-www-form-urlencoded")) {
+    const text = await req.text();
+    const params = new URLSearchParams(text);
+    password = params.get("password") ?? "";
+    redirect = params.get("redirect") ?? "/";
+  } else {
+    const body = await req.json().catch(() => ({}));
+    password = body.password ?? "";
+    redirect = body.redirect ?? "/";
   }
 
-  const { password } = await req.json().catch(() => ({ password: "" }));
   const correct = process.env.PASSWORD ?? "";
-
   if (!correct) {
-    return NextResponse.json({ error: "Not configured" }, { status: 500 });
+    const url = new URL("/dev-login", req.url);
+    url.searchParams.set("error", "not-configured");
+    url.searchParams.set("redirect", redirect);
+    return NextResponse.redirect(url, 302);
   }
 
   const a = Buffer.alloc(correct.length);
   const b = Buffer.from(correct);
-  Buffer.from(password ?? "").copy(a, 0, 0, correct.length);
-  const match =
-    timingSafeEqual(a, b) &&
-    (password ?? "").length === correct.length;
+  Buffer.from(password).copy(a, 0, 0, correct.length);
+  const match = timingSafeEqual(a, b) && password.length === correct.length;
 
   if (!match) {
-    return NextResponse.json({ error: "Invalid password" }, { status: 401 });
+    const url = new URL("/dev-login", req.url);
+    url.searchParams.set("error", "invalid");
+    url.searchParams.set("redirect", redirect);
+    return NextResponse.redirect(url, 302);
   }
 
   const token = makeToken(correct);
-  const res = NextResponse.json({ ok: true });
+  const safe = redirect.startsWith("/") ? redirect : "/";
+  const res = NextResponse.redirect(new URL(safe, req.url), 302);
   res.cookies.set("dev_auth", token, {
     httpOnly: true,
-    secure: true,
-    sameSite: "strict",
+    secure: false,
+    sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: 60 * 60 * 24 * 30,
   });
   return res;
 }

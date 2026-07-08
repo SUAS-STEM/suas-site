@@ -38,6 +38,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${exo.variable} antialiased flex flex-col bg-black text-white min-h-screen`}
+        suppressHydrationWarning
       >
   <Loader />
         <Navbar />

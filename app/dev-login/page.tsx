@@ -1,45 +1,23 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useRef, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const redirect = params.get("redirect") ?? "/";
-
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const error = params.get("error");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      const res = await fetch("/api/dev-auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (res.ok) {
-        router.push(redirect);
-      } else {
-        setError("Incorrect password.");
-        setPassword("");
-        inputRef.current?.focus();
-      }
-    } catch {
-      setError("Network error. Try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const errorMessage =
+    error === "invalid"
+      ? "Incorrect password."
+      : error === "not-configured"
+      ? "Server not configured."
+      : null;
 
   return (
     <main className="flex flex-1 items-center justify-center px-4">
@@ -56,30 +34,30 @@ function LoginForm() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <input
-              ref={inputRef}
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              autoComplete="current-password"
-              disabled={loading}
-              className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/50 transition disabled:opacity-50"
-            />
-          </div>
+        <form
+          method="POST"
+          action="/api/dev-auth"
+          className="space-y-4"
+        >
+          <input type="hidden" name="redirect" value={redirect} />
+          <input
+            ref={inputRef}
+            type="password"
+            name="password"
+            placeholder="Password"
+            autoComplete="current-password"
+            className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/50 transition"
+          />
 
-          {error && (
-            <p className="text-sm text-red-400">{error}</p>
+          {errorMessage && (
+            <p className="text-sm text-red-400">{errorMessage}</p>
           )}
 
           <button
             type="submit"
-            disabled={loading || !password}
-            className="w-full bg-white text-black font-semibold text-sm py-3 rounded-lg hover:bg-white/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full bg-white text-black font-semibold text-sm py-3 rounded-lg hover:bg-white/90 transition"
           >
-            {loading ? "Verifying…" : "Enter"}
+            Enter
           </button>
         </form>
       </div>
