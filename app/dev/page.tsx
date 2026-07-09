@@ -32,6 +32,14 @@ export default function DevPage() {
               {t}
             </button>
           ))}
+          <form method="POST" action="/api/dev-auth/logout" className="ml-auto mb-0 pb-3">
+            <button
+              type="submit"
+              className="text-sm font-medium text-white/40 hover:text-white/70 transition-colors"
+            >
+              Log out
+            </button>
+          </form>
         </div>
       </div>
 
