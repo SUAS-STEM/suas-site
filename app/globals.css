@@ -342,7 +342,10 @@ p a {
 }
 
 .btn-download {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   margin-top: 2rem;
   border-radius: 6px;
   background: #2563eb;
