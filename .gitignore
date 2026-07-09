@@ -42,3 +42,5 @@ next-env.d.ts
 
 # private content
 /wiki
+/internal
+.internal-fetch.tar.gz

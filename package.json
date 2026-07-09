@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "fetch:internal": "node scripts/fetch-internal.mjs",
+    "predev": "npm run fetch:internal",
+    "prebuild": "npm run fetch:internal",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
