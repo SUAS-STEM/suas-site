@@ -1,33 +1,30 @@
-const LINK_GROUPS = [
-  {
-    group: "Competition",
-    links: [
-      { label: "AUVSI SUAS", desc: "Official competition website", href: "https://suas-competition.org" },
-      { label: "Rules & Docs", desc: "Current year competition rules PDF", href: "https://suas-competition.org/competitions" },
-    ],
-  },
-  {
-    group: "Development",
-    links: [
-      { label: "GitHub Organization", desc: "SUAS-STEM GitHub org", href: "https://github.com/SUAS-STEM" },
-      { label: "MAVLink Docs", desc: "Protocol reference for drone communication", href: "https://mavlink.io/en" },
-      { label: "MAVSDK Docs", desc: "SDK used in SSGCS", href: "https://mavsdk.mavlink.io" },
-      { label: "QGroundControl", desc: "Backup GCS for field use", href: "http://qgroundcontrol.com" },
-    ],
-  },
-  {
-    group: "Resources",
-    links: [
-      { label: "ArduPilot Docs", desc: "Flight controller documentation", href: "https://ardupilot.org/ardupilot" },
-      { label: "PX4 Docs", desc: "Alternative flight stack reference", href: "https://docs.px4.io" },
-    ],
-  },
-];
+"use client";
+import { useEffect, useState } from "react";
+
+interface LinkItem {
+  label: string;
+  desc: string;
+  href: string;
+}
+
+interface LinkGroup {
+  group: string;
+  links: LinkItem[];
+}
 
 export default function LinksTab() {
+  const [groups, setGroups] = useState<LinkGroup[]>([]);
+
+  useEffect(() => {
+    fetch("/api/links")
+      .then((r) => r.json())
+      .then(setGroups)
+      .catch(() => setGroups([]));
+  }, []);
+
   return (
     <div className="space-y-10">
-      {LINK_GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.group}>
           <p className="text-xs font-mono text-white/30 uppercase tracking-widest mb-3">
             {group.group}
