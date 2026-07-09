@@ -24,6 +24,11 @@ async function makeToken(password: string): Promise<string> {
 export async function proxy(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
   const password = process.env.PASSWORD;
+  const host = req.headers.get("host")?.replace(/:\d+$/, "") ?? "";
+  // next.config.ts rewrites "/" -> "/dev" for this host, but that rewrite
+  // happens after middleware, so this proxy sees the original "/" and must
+  // treat it as protected explicitly.
+  const isDevHostRoot = host === DEV_HOST && pathname === "/";
 
   if (pathname === "/dev-auth-callback") {
     const submitted = searchParams.get("token");
@@ -51,7 +56,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!isProtected(pathname)) return NextResponse.next();
+  if (!isProtected(pathname) && !isDevHostRoot) return NextResponse.next();
 
   // Fail closed: without a configured password, protected routes are blocked
   // rather than silently served, so a missing env var can't leak internal content.
@@ -67,10 +72,9 @@ export async function proxy(req: NextRequest) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const host = req.headers.get("host")?.replace(/:\d+$/, "") ?? "";
   const loginUrl = req.nextUrl.clone();
   loginUrl.pathname = "/dev-login";
-  loginUrl.searchParams.set("redirect", host === DEV_HOST && pathname === "/dev" ? "/" : pathname);
+  loginUrl.searchParams.set("redirect", isDevHostRoot ? "/" : pathname);
   return NextResponse.redirect(loginUrl);
 }
 
