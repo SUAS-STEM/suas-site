@@ -44,7 +44,7 @@ export async function proxy(req: NextRequest) {
     const res = NextResponse.redirect(new URL(safe, req.url));
     res.cookies.set(COOKIE, expected, {
       httpOnly: true,
-      secure: false,
+      secure: true,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 30,

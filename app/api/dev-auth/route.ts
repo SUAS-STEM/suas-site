@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   const res = NextResponse.redirect(new URL(safe, req.url), 302);
   res.cookies.set("dev_auth", token, {
     httpOnly: true,
-    secure: false,
+    secure: true,
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
