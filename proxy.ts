@@ -25,10 +25,6 @@ export async function proxy(req: NextRequest) {
 
   const { pathname, searchParams } = req.nextUrl;
 
-  if (pathname === "/") {
-    return NextResponse.redirect(new URL("/dev", req.url));
-  }
-
   if (pathname === "/dev-auth-callback" && searchParams.get("token")) {
     const submitted = searchParams.get("token")!;
     const expected = await makeToken(password);
@@ -57,7 +53,7 @@ export async function proxy(req: NextRequest) {
 
   const loginUrl = req.nextUrl.clone();
   loginUrl.pathname = "/dev-login";
-  loginUrl.searchParams.set("redirect", pathname === "/" ? "/dev" : pathname);
+  loginUrl.searchParams.set("redirect", pathname === "/dev" ? "/" : pathname);
   return NextResponse.redirect(loginUrl);
 }
 

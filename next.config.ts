@@ -3,6 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   devIndicators: false,
   allowedDevOrigins: ["dev.suasstem.org"],
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/",
+          has: [{ type: "host", value: "dev.suasstem.org" }],
+          destination: "/dev",
+        },
+      ],
+    };
+  },
   images: {
     // Serve AVIF when the browser supports it (falls back to WebP), so the
     // optimizer produces smaller files than the WebP-only default. Source
