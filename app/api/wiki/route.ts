@@ -5,7 +5,7 @@ const REPO = "SUAS-STEM/suas-internal";
 export async function GET(req: NextRequest) {
   const page = req.nextUrl.searchParams.get("page") ?? "home";
 
-  if (!/^[a-z0-9-]+$/.test(page)) {
+  if (!/^[a-z0-9-]+(\/[a-z0-9-]+)*$/.test(page)) {
     return new NextResponse("Not found", { status: 404 });
   }
 
