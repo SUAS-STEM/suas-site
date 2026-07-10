@@ -107,17 +107,17 @@ const sections: { title: string; description: string; members: Member[] }[] = [
         description: "The Avionics subsystem develops and integrates onboard electronics.",
         members: [
             {
-                name: "Ivana Mohapatra",
-                grade: 10,
-                rank: Rank.Lead,
-                about: `My name is Ivana Mohapatra and I'm an engineer and graphic designer. I'm 16 years old and a sophomore at Tesla STEM high school, part of the SUAS team's Avionics subdivision. In my free time, I love biking sketching hyper realistic images, and walking all my friends' dogs since I have none of my own.`,
-            },
-            {
                 name: "Nithin Ganesh",
                 grade: 10,
-                rank: Rank.Member,
+                rank: Rank.Lead,
                 about: `My name is Nithin, and I'm working toward a future in aerospace engineering. I'm especially drawn to propulsion and energy‑storage systems, the parts of aerospace where physics becomes both elegant and challenging. Flying FPV drones is one of my hobbies, and it is one of my favorite ways to explore flight firsthand. Additionally, I do competitive rocketry which gives me the excitement of turning theory and design into something that actually leaves the ground. When I need a break from designing, testing, or flying, I hop on my bike and enjoy the simple things in life.`,
             },
+            {
+                name: "Ivana Mohapatra",
+                grade: 10,
+                rank: Rank.Member,
+                about: `My name is Ivana Mohapatra and I'm an engineer and graphic designer. I'm 16 years old and a sophomore at Tesla STEM high school, part of the SUAS team's Avionics subdivision. In my free time, I love biking sketching hyper realistic images, and walking all my friends' dogs since I have none of my own.`,
+            }, 
             {
                 name: "Akanksha Revuru",
                 grade: 11,
