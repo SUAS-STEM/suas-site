@@ -115,7 +115,7 @@ export default function AircraftPage() {
                     <div className="mt-10">
                         <p className="mb-3 text-sm text-white/70">For SUAS members only:</p>
                         <a
-                            href="/dev"
+                            href="/ssgcs"
                             className="inline-block rounded-md border border-white/50 bg-white/5 px-3 py-2 text-sm text-white/80 transition hover:bg-white hover:text-black"
                         >
                             Download SUAS@STEM Ground Control Software
