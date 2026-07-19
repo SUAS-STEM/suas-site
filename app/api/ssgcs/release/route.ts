@@ -23,9 +23,13 @@ export async function GET() {
   // Releases are always published as prereleases (dev-v0.NNN), so
   // /releases/latest (which excludes prereleases) never matches them.
   const [data] = await res.json();
+  const assets: { name: string; size: number }[] = (data?.assets ?? []).map(
+    (a: { name: string; size: number }) => ({ name: a.name, size: a.size })
+  );
   return NextResponse.json({
     tag: data?.tag_name ?? "",
     date: data?.published_at ?? "",
     url: data?.html_url ?? "",
+    assets,
   });
 }

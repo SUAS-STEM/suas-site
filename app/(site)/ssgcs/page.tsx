@@ -1,25 +1,38 @@
 "use client";
 import { useEffect, useState } from "react";
 
+interface ReleaseAsset {
+    name: string;
+    size: number;
+}
+
 interface ReleaseInfo {
     tag: string;
     date: string;
     url: string;
+    assets: ReleaseAsset[];
 }
 
 const PLATFORM_ASSET: Record<string, string> = {
-    "windows-x86": "ssgcs-win32-amd64.exe",
     "macos-arm64": "ssgcs-macos-arm64.dmg",
 };
 
+function formatBytes(bytes: number): string {
+    if (!bytes) return "";
+    const mb = bytes / (1024 * 1024);
+    if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
+    return `${mb.toFixed(1)} MB`;
+}
+
 export default function SsgcsPage() {
     const [selectedPlatform, setSelectedPlatform] = useState<"windows-x86" | "macos-arm64">("windows-x86");
+    const [cudaVariant, setCudaVariant] = useState<"cuda" | "nocuda">("nocuda");
     const [release, setRelease] = useState<ReleaseInfo | null>(null);
 
     useEffect(() => {
         fetch("/api/ssgcs/release")
             .then((r) => r.json())
-            .then((data: { tag: string; date: string; url: string }) => {
+            .then((data: { tag: string; date: string; url: string; assets: ReleaseAsset[] }) => {
                 const date = data.date
                     ? new Date(data.date).toLocaleString("en-US", {
                           year: "numeric",
@@ -29,15 +42,23 @@ export default function SsgcsPage() {
                           minute: "2-digit",
                       })
                     : "";
-                setRelease({ tag: data.tag, date, url: data.url });
+                setRelease({ tag: data.tag, date, url: data.url, assets: data.assets ?? [] });
             })
             .catch(() => {});
     }, []);
 
+    const assetName =
+        selectedPlatform === "windows-x86"
+            ? cudaVariant === "cuda"
+                ? "ssgcs-win32-amd64-cuda.exe"
+                : "ssgcs-win32-amd64.exe"
+            : PLATFORM_ASSET[selectedPlatform];
+
+    const selectedAsset = release?.assets.find((a) => a.name === assetName) ?? null;
+
     const handleDownload = () => {
         if (!selectedPlatform || !release) return;
-        const asset = PLATFORM_ASSET[selectedPlatform];
-        window.location.href = `/api/ssgcs/download?asset=${encodeURIComponent(asset)}&tag=${encodeURIComponent(release.tag)}`;
+        window.location.href = `/api/ssgcs/download?asset=${encodeURIComponent(assetName)}&tag=${encodeURIComponent(release.tag)}`;
     };
 
     return (
@@ -110,6 +131,48 @@ export default function SsgcsPage() {
                         </label>
                     </div>
 
+                    {selectedPlatform === "windows-x86" && (
+                        <div className="mt-6 flex items-center gap-3 flex-wrap">
+                            <span className="text-sm text-white/60">GPU acceleration:</span>
+                            <div className="inline-flex rounded-lg border border-white/30 p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setCudaVariant("cuda")}
+                                    className="px-3 py-1.5 rounded-md text-sm transition"
+                                    style={{
+                                        backgroundColor:
+                                            cudaVariant === "cuda" ? "rgba(255, 255, 255, 0.15)" : "transparent",
+                                        fontWeight: cudaVariant === "cuda" ? 600 : 400,
+                                    }}
+                                >
+                                    CUDA
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCudaVariant("nocuda")}
+                                    className="px-3 py-1.5 rounded-md text-sm transition"
+                                    style={{
+                                        backgroundColor:
+                                            cudaVariant === "nocuda" ? "rgba(255, 255, 255, 0.15)" : "transparent",
+                                        fontWeight: cudaVariant === "nocuda" ? 600 : 400,
+                                    }}
+                                >
+                                    Standard
+                                </button>
+                            </div>
+                            <span className="text-sm text-white/40">
+                                {cudaVariant === "cuda" ? (
+                                    <>
+                                        Higher performance,{" "}
+                                        <b className="text-blue-400">requires a NVIDIA GPU</b>
+                                    </>
+                                ) : (
+                                    "CPU-only, no NVIDIA GPU required"
+                                )}
+                            </span>
+                        </div>
+                    )}
+
                     <div className="mt-8 flex items-center gap-4 flex-wrap">
                         <button
                             onClick={handleDownload}
@@ -118,6 +181,11 @@ export default function SsgcsPage() {
                             style={{ marginTop: 0 }}
                         >
                             Download SSGCS
+                            {selectedAsset && (
+                                <span className="ml-2 text-white/60 font-normal">
+                                    ({formatBytes(selectedAsset.size)})
+                                </span>
+                            )}
                         </button>
 
                         {release && (
@@ -169,13 +237,13 @@ export default function SsgcsPage() {
                             </tr>
                             <tr>
                                 <td>RAM</td>
-                                <td>300 MB free</td>
-                                <td>16 GB</td>
+                                <td>250 MB free<br /><b>With AI</b>: 3 GB free</td>
+                                <td>16+ GB</td>
                             </tr>
                             <tr>
                                 <td>Storage</td>
-                                <td>500 MB free</td>
-                                <td>16 GB free</td>
+                                <td>400 MB free<br /><b>With AI</b>: 16 GB free</td>
+                                <td>1 GB free<br /><b>With AI</b>: 32 GB free</td>
                             </tr>
                         </tbody>
                     </table>

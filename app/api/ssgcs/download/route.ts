@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const REPO = "SUAS-STEM/gcs";
-const ASSET_NAMES = new Set(["ssgcs-win32-amd64.exe", "ssgcs-macos-arm64.dmg"]);
+const ASSET_NAMES = new Set([
+  "ssgcs-win32-amd64-cuda.exe",
+  "ssgcs-win32-amd64.exe",
+  "ssgcs-macos-arm64.dmg",
+]);
 
 export async function GET(req: NextRequest) {
   const token = process.env.GITHUB_TOKEN;
