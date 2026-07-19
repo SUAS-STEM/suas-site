@@ -58,7 +58,7 @@ export default function SsgcsPage() {
 
     const handleDownload = () => {
         if (!selectedPlatform || !release) return;
-        window.location.href = `/api/ssgcs/download?asset=${encodeURIComponent(assetName)}&tag=${encodeURIComponent(release.tag)}`;
+        window.location.href = `/api/ssgcs/download?asset=${encodeURIComponent(assetName)}`;
     };
 
     return (
@@ -190,14 +190,7 @@ export default function SsgcsPage() {
 
                         {release && (
                             <div className="text-sm text-white/50 font-mono">
-                                <a
-                                    href={release.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-white/70 hover:text-white transition"
-                                >
-                                    {release.tag}
-                                </a>
+                                <span className="text-white/70">{release.tag}</span>
                                 {release.date && (
                                     <span className="ml-2 text-white/40">{release.date}</span>
                                 )}
