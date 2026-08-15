@@ -3,6 +3,7 @@
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import SiteSearch from "@/components/SiteSearch";
 
 export default function Navbar(): React.ReactElement {
 	const [isMobile, setIsMobile] = useState(false);
@@ -21,6 +22,11 @@ export default function Navbar(): React.ReactElement {
 
 	return (
 		<nav className="w-full border-b border-gray-800 h-30 flex items-center font-sans relative">
+			{!isMobile && (
+				<div className="fixed right-6 top-10 z-50">
+					<SiteSearch />
+				</div>
+			)}
 			<div className="max-w-6xl mx-auto px-4">
 				{isMobile ? (
 					// Mobile header
@@ -70,7 +76,7 @@ export default function Navbar(): React.ReactElement {
 								Aircraft
 							</Link>
 							<Link href="/sponsor" className="text-md font-medium hover:underline">
-								Sponsor
+								Contact
 							</Link>
 						</div>
 					</div>
@@ -93,8 +99,9 @@ export default function Navbar(): React.ReactElement {
 								Aircraft
 							</Link>
 							<Link href="/sponsor" className="text-md font-medium hover:underline" onClick={() => setIsMenuOpen(false)}>
-								Sponsor
+								Contact
 							</Link>
+							<SiteSearch />
 						</div>
 					</div>
 				)}

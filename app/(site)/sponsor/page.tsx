@@ -45,7 +45,7 @@ export default function SponsorPage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-start py-12 px-4 sm:px-6 lg:px-8 text-white font-sans">
       <div className="w-full max-w-3xl">
-        <h1 className="text-6xl font-extrabold mb-3 text-left">Sponsor Us</h1>
+        <h1 className="text-6xl font-extrabold mb-3 text-left">Contact</h1>
         <p className="text-gray-300 mb-8 max-w-2xl">
           Help send SUAS@STEM to the competition. Whether it&apos;s funding, parts, or
           mentorship, we&apos;d love to hear from you — drop us a note below and we&apos;ll get

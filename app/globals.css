@@ -197,7 +197,7 @@ footer a {
 }
 
 h1 {
-  font-size: 3rem;
+  font-size: clamp(1.75rem, 12vw, 3rem);
   font-weight: 800;
   text-align: center;
   margin-bottom: 20px;
@@ -212,7 +212,7 @@ h1 {
 h2 {
   margin-bottom: 20px;
   text-align: center;
-  font-size: 2rem;
+  font-size: clamp(1.35rem, 8vw, 2rem);
   text-shadow: var(--text-shadow);
 }
 
@@ -220,13 +220,76 @@ h3 {
   margin-top: 16px;
   margin-bottom: 16px;
   text-align: center !important; /* ? */
-  font-size: 1.5rem;
+  font-size: clamp(1.1rem, 6vw, 1.5rem);
   text-shadow: var(--text-shadow);
 }
 
 p {
   margin-bottom: 16px;
   line-height: 1.55;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.spec-card-icon {
+  flex: 1 1 220px;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid var(--accent, var(--primary));
+  padding: 1.1rem 1rem;
+  text-align: left;
+  border-radius: 8px;
+}
+
+.spec-card-icon .icon-badge {
+  flex-shrink: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent, var(--primary)) 18%, transparent);
+}
+
+.spec-card-icon .material-symbols-outlined {
+  font-size: 1.4rem;
+  color: var(--accent, var(--primary-light));
+  flex-shrink: 0;
+}
+
+.spec-card-icon .spec-value {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0;
+  white-space: pre-line;
+}
+
+.spec-card-icon .spec-label {
+  margin: 0 0 0.3rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.66rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.spec-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  width: 100%;
 }
 
 .spec-card {
@@ -293,6 +356,15 @@ table {
     border-spacing: 0;
     width: 100%;
     margin: 20px 0;
+}
+
+.table-equal-cols {
+    table-layout: fixed;
+}
+
+.table-equal-cols th,
+.table-equal-cols td {
+    width: 50%;
 }
 
 table tr th,
