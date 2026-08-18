@@ -44,3 +44,7 @@ next-env.d.ts
 /wiki
 /internal
 .internal-fetch.tar.gz
+
+# docker secrets / local data
+/.secrets
+/data

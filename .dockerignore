@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.github
+data
+internal
+wiki
+*.log
+.env*
+!.env.example
+cloudflared.deb
+.internal-fetch.tar.gz

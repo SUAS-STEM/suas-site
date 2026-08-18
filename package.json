@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.20",
-    "firebase": "^12.13.0",
+    "better-sqlite3": "^12.11.1",
     "framer-motion": "^12.23.24",
     "next": "^16.2.6",
     "next-page-transitions": "^1.0.0-beta.2",
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
