@@ -1,0 +1,22 @@
+services:
+  suas-site:
+    build:
+      context: .
+      secrets:
+        - github_token
+    image: suas-site:latest
+    container_name: suas-site
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    volumes:
+      - suas_data:/data
+
+secrets:
+  github_token:
+    file: ./.secrets/github_token
+
+volumes:
+  suas_data:

@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function SponsorPage() {
   const [name, setName] = useState("");
@@ -19,12 +17,16 @@ export default function SponsorPage() {
     setSuccess(null);
 
     try {
-      await addDoc(collection(db, "sponsors"), {
-        name,
-        email,
-        message,
-        createdAt: serverTimestamp(),
+      const res = await fetch("/api/sponsor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, message }),
       });
+
+      if (!res.ok) {
+        throw new Error("Request failed");
+      }
+
       setSuccess("Thanks — your message was sent!");
       setName("");
       setEmail("");
