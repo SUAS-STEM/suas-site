@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { requestOrigin } from "@/lib/requestOrigin";
 
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 10;
@@ -39,9 +40,10 @@ export async function POST(req: NextRequest) {
     redirect = body.redirect ?? "/";
   }
 
+  const origin = requestOrigin(req);
   const correct = process.env.PASSWORD ?? "";
   if (!correct) {
-    const url = new URL("/dev-login", req.url);
+    const url = new URL("/dev-login", origin);
     url.searchParams.set("error", "not-configured");
     url.searchParams.set("redirect", redirect);
     return NextResponse.redirect(url, 302);
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
   const match = timingSafeEqual(a, b) && password.length === correct.length;
 
   if (!match) {
-    const url = new URL("/dev-login", req.url);
+    const url = new URL("/dev-login", origin);
     url.searchParams.set("error", "invalid");
     url.searchParams.set("redirect", redirect);
     return NextResponse.redirect(url, 302);
@@ -61,13 +63,13 @@ export async function POST(req: NextRequest) {
 
   const token = makeToken(correct);
   const safe = redirect.startsWith("/") ? redirect : "/";
-  const res = NextResponse.redirect(new URL(safe, req.url), 302);
+  const res = NextResponse.redirect(new URL(safe, origin), 302);
   res.cookies.set("dev_auth", token, {
     httpOnly: true,
     secure: true,
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 60 * 60 * 24 * 365,
   });
   return res;
 }

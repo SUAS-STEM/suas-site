@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requestOrigin } from "@/lib/requestOrigin";
 
 const DEV_HOST = "dev.suasstem.org";
 const COOKIE = "dev_auth";
@@ -31,17 +32,18 @@ export async function proxy(req: NextRequest) {
   const isDevHostRoot = host === DEV_HOST && pathname === "/";
 
   if (pathname === "/dev-auth-callback") {
+    const origin = requestOrigin(req);
     const submitted = searchParams.get("token");
     const redirectParam = searchParams.get("redirect") ?? "/";
     const safe = redirectParam.startsWith("/") ? redirectParam : "/";
-    const loginUrl = new URL("/dev-login", req.url);
+    const loginUrl = new URL("/dev-login", origin);
 
     if (!password || !submitted) return NextResponse.redirect(loginUrl);
 
     const expected = await makeToken(password);
     if (submitted !== expected) return NextResponse.redirect(loginUrl);
 
-    const res = NextResponse.redirect(new URL(safe, req.url));
+    const res = NextResponse.redirect(new URL(safe, origin));
     res.cookies.set(COOKIE, expected, {
       httpOnly: true,
       secure: true,
@@ -72,8 +74,7 @@ export async function proxy(req: NextRequest) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const loginUrl = req.nextUrl.clone();
-  loginUrl.pathname = "/dev-login";
+  const loginUrl = new URL("/dev-login", requestOrigin(req));
   loginUrl.searchParams.set("redirect", isDevHostRoot ? "/" : pathname);
   return NextResponse.redirect(loginUrl);
 }
