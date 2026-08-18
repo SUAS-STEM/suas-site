@@ -37,7 +37,7 @@ export default function Home() {
                         </p>
                         <p className="text-gray-300 max-w-xl mb-8">
                             2026 is the first year of SUAS@STEM. We are currently designing and
-                            testing our third aircraft, Event Horizon 3, and are excited to
+                            testing our fourth aircraft, Event Horizon-4, and are excited to
                             represent Tesla STEM High School at Skyway Range in Tulsa, Oklahoma
                             later this year.
                         </p>

@@ -33,6 +33,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/dronefav.svg" sizes="any" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,500,0,0"
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${exo.variable} antialiased flex flex-col bg-black text-white min-h-screen`}
