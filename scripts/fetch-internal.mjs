@@ -8,10 +8,24 @@ const REF = process.env.INTERNAL_REF || "main";
 const TARGET = path.resolve(process.cwd(), "internal");
 const token = process.env.GITHUB_TOKEN;
 
+// Pages that re-export from internal/ (e.g. app/dev/tabs/SsgcsTab.tsx) need
+// the module to exist for the build to compile, even without real content.
+function writeStub() {
+  const pagesDir = path.join(TARGET, "pages");
+  mkdirSync(pagesDir, { recursive: true });
+  writeFileSync(
+    path.join(pagesDir, "Ssgcs.tsx"),
+    `export default function Ssgcs() {\n` +
+      `  return <div className="p-8 text-white/60">SSGCS content unavailable in this build.</div>;\n` +
+      `}\n`
+  );
+}
+
 if (!token) {
   console.warn(
-    "[fetch-internal] GITHUB_TOKEN not set — skipping. Pages that import from internal/ will fail to build."
+    "[fetch-internal] GITHUB_TOKEN not set — writing stub internal/ so the build can still compile."
   );
+  writeStub();
   process.exit(0);
 }
 
@@ -20,8 +34,11 @@ const res = await fetch(`https://api.github.com/repos/${REPO}/tarball/${REF}`, {
 });
 
 if (!res.ok) {
-  console.error(`[fetch-internal] Failed to fetch tarball: ${res.status} ${res.statusText}`);
-  process.exit(1);
+  console.warn(
+    `[fetch-internal] Failed to fetch tarball: ${res.status} ${res.statusText} — writing stub internal/ so the build can still compile.`
+  );
+  writeStub();
+  process.exit(0);
 }
 
 const buf = Buffer.from(await res.arrayBuffer());
