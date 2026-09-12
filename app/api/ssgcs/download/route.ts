@@ -13,15 +13,8 @@ export async function GET(req: NextRequest) {
     return new NextResponse("Invalid request", { status: 400 });
   }
 
-  const res = await fetch(`${WORKER_URL}?asset=${encodeURIComponent(asset)}`);
-  if (!res.ok || !res.body) {
-    return new NextResponse("Failed to fetch asset", { status: res.status || 502 });
-  }
-
-  return new NextResponse(res.body, {
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${asset}"`,
-    },
-  });
+  return NextResponse.redirect(
+    `${WORKER_URL}?asset=${encodeURIComponent(asset)}`,
+    307,
+  );
 }

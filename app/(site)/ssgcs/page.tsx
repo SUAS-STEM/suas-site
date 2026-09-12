@@ -13,6 +13,8 @@ interface ReleaseInfo {
     assets: ReleaseAsset[];
 }
 
+const DOWNLOAD_WORKER_URL = "https://gcs-license.esamuelchan.workers.dev/release-download";
+
 const PLATFORM_ASSET: Record<string, string> = {
     "macos-arm64": "ssgcs-macos-arm64.dmg",
 };
@@ -57,8 +59,9 @@ export default function SsgcsPage() {
     const selectedAsset = release?.assets.find((a) => a.name === assetName) ?? null;
 
     const handleDownload = () => {
-        if (!selectedPlatform || !release) return;
-        window.location.href = `/api/ssgcs/download?asset=${encodeURIComponent(assetName)}`;
+        if (!selectedPlatform) return;
+        // Navigation to the Worker does not require CORS and bypasses the Pi.
+        window.location.href = `${DOWNLOAD_WORKER_URL}?asset=${encodeURIComponent(assetName)}`;
     };
 
     return (
@@ -176,7 +179,7 @@ export default function SsgcsPage() {
                     <div className="mt-8 flex items-center gap-4 flex-wrap">
                         <button
                             onClick={handleDownload}
-                            disabled={!selectedPlatform || !release}
+                            disabled={!selectedPlatform}
                             className="btn-download"
                             style={{ marginTop: 0 }}
                         >

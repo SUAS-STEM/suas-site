@@ -4,6 +4,23 @@ const nextConfig: NextConfig = {
   output: "standalone",
   devIndicators: false,
   allowedDevOrigins: ["dev.suasstem.org"],
+  async headers() {
+    return [
+      {
+        source: "/images/gallery/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, max-age=315360000, stale-if-error=315360000",
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return {
       beforeFiles: [

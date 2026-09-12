@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "fetch:internal": "node scripts/fetch-internal.mjs",
-    "predev": "npm run fetch:internal",
-    "prebuild": "npm run fetch:internal",
+    "predev": "npm run fetch:internal && npm run gallery:manifest",
+    "prebuild": "npm run fetch:internal && npm run gallery:manifest",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "gallery:manifest": "node scripts/generate-gallery-manifest.mjs"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.20",

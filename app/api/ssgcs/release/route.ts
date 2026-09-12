@@ -9,10 +9,19 @@ export async function GET() {
   }
 
   const data = await res.json();
-  return NextResponse.json({
-    tag: data?.tag ?? "",
-    date: data?.date ?? "",
-    url: "",
-    assets: data?.assets ?? [],
-  });
+  return NextResponse.json(
+    {
+      tag: data?.tag ?? "",
+      date: data?.date ?? "",
+      url: "",
+      assets: data?.assets ?? [],
+    },
+    {
+      headers: {
+        "Cache-Control": "public, max-age=60",
+        "Cloudflare-CDN-Cache-Control":
+          "public, max-age=300, stale-if-error=315360000",
+      },
+    },
+  );
 }

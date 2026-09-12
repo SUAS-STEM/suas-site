@@ -1,42 +1,34 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { DURABLE_GALLERY_BASE, GALLERY_PHOTOS } from "@/lib/galleryPhotos.generated";
 
-// Used when /api/images is unreachable or the gallery folder is empty.
-const FALLBACK_PHOTOS = [
-    "/images/gallery/IMG-20251124-WA0005.jpg",
-    "/images/gallery/IMG-20251124-WA0020.jpg",
-    "/images/gallery/20260218_223214240_iOS.png",
-];
+function useDurableFallback(
+    event: React.SyntheticEvent<HTMLImageElement>,
+    originalSrc: string,
+) {
+    const image = event.currentTarget;
+    if (image.dataset.durableFallback === "1") {
+        image.onerror = null;
+        image.src = "/logo.png";
+        return;
+    }
+
+    image.dataset.durableFallback = "1";
+    const fileName = originalSrc.split("/").pop();
+    if (!fileName) {
+        image.src = "/logo.png";
+        return;
+    }
+    image.src = `${DURABLE_GALLERY_BASE}/${fileName}`;
+}
 
 export default function GalleryPage() {
-    const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
+    // Baked into the static page and served from a Pi-independent origin.
+    const galleryPhotos = GALLERY_PHOTOS as readonly string[];
     const [isFullscreenMode, setIsFullscreenMode] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [switchClass, setSwitchClass] = useState("");
-
-    useEffect(() => {
-        let mounted = true;
-        fetch("/api/images")
-            .then((res) => res.json())
-            .then((data: string[]) => {
-                if (!mounted) return;
-                if (Array.isArray(data) && data.length > 0) {
-                    setGalleryPhotos(data);
-                } else {
-                    // fallback to a small default set if directory is empty
-                    setGalleryPhotos(FALLBACK_PHOTOS);
-                }
-            })
-            .catch(() => {
-                if (!mounted) return;
-                setGalleryPhotos(FALLBACK_PHOTOS);
-            });
-
-        return () => {
-            mounted = false;
-        };
-    }, []);
 
     useEffect(() => {
         if (!isFullscreenMode) return;
@@ -161,33 +153,34 @@ export default function GalleryPage() {
                                     key={`${currentIndex}-${switchClass}`}
                                     className={`w-full flex items-start justify-center rounded-xl overflow-hidden ${switchClass}`}
                                 >
-                                    <Image
+                                    <img
                                         src={galleryPhotos[currentIndex] || "/logo.png"}
                                         alt={`gallery-${currentIndex + 1}`}
                                         className="block h-auto w-auto max-w-full rounded-xl border border-white"
                                         style={{ borderRadius: "0.75rem" }}
                                         onError={(e) => {
-                                            (e.currentTarget as HTMLImageElement).src = "/logo.png";
+                                            useDurableFallback(e, galleryPhotos[currentIndex] || "/logo.png");
                                         }}
-                                        width={1200}
-                                        height={900}
+                                        width="1200"
+                                        height="900"
                                         loading="eager"
-                                        sizes="(max-width: 768px) 100vw, 1200px"
+                                        decoding="async"
                                     />
                                 </div>
                                 {/* Used as a cache to have the browser preload images before they're clicked. */}
                                 {preloadIndices.length > 0 && (
                                     <div className="hidden" aria-hidden="true">
                                         {preloadIndices.map((index) => (
-                                            <Image
+                                            <img
                                                 key={`preload-${index}`}
                                                 src={galleryPhotos[index]}
                                                 alt=""
-                                                width={1200}
-                                                height={900}
+                                                width="1200"
+                                                height="900"
                                                 loading="eager"
                                                 fetchPriority="low"
-                                                sizes="(max-width: 768px) 100vw, 1200px"
+                                                decoding="async"
+                                                onError={(e) => useDurableFallback(e, galleryPhotos[index])}
                                             />
                                         ))}
                                     </div>
@@ -203,16 +196,17 @@ export default function GalleryPage() {
                                     onClick={() => openFullscreenAt(idx)}
                                     className="bg-white border-1 cursor-pointer border-white rounded overflow-hidden shadow-sm text-left"
                                 >
-                                    <Image
+                                    <img
                                         src={src}
                                         alt={`gallery-${idx + 1}`}
                                         className="w-full h-auto aspect-[4/3] object-cover rounded-lg"
                                         onError={(e) => {
-                                            (e.currentTarget as HTMLImageElement).src = "/logo.png";
+                                            useDurableFallback(e, src);
                                         }}
-                                        width={400}
-                                        height={300}
-                                        sizes="(max-width: 768px) 50vw, 33vw"
+                                        width="400"
+                                        height="300"
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                 </button>
                             ))}
