@@ -1,7 +1,11 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { DURABLE_GALLERY_BASE, GALLERY_PHOTOS } from "@/lib/galleryPhotos.generated";
+import {
+    DURABLE_GALLERY_BASE,
+    GALLERY_PHOTOS,
+    GALLERY_THUMBNAILS,
+} from "@/lib/galleryPhotos.generated";
 
 function useDurableFallback(
     event: React.SyntheticEvent<HTMLImageElement>,
@@ -26,6 +30,7 @@ function useDurableFallback(
 export default function GalleryPage() {
     // Baked into the static page and served from a Pi-independent origin.
     const galleryPhotos = GALLERY_PHOTOS as readonly string[];
+    const galleryThumbnails = GALLERY_THUMBNAILS as readonly string[];
     const [isFullscreenMode, setIsFullscreenMode] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [switchClass, setSwitchClass] = useState("");
@@ -68,7 +73,7 @@ export default function GalleryPage() {
     };
 
     // Preload 6 next and 6 previous images. Should be a balance of performance and memory usage.
-    const cacheSize = 6;
+    const cacheSize = 2;
     const preloadIndices =
         galleryPhotos.length > 1
             ? Array.from(
@@ -197,7 +202,7 @@ export default function GalleryPage() {
                                     className="bg-white border-1 cursor-pointer border-white rounded overflow-hidden shadow-sm text-left"
                                 >
                                     <img
-                                        src={src}
+                                        src={galleryThumbnails[idx] || src}
                                         alt={`gallery-${idx + 1}`}
                                         className="w-full h-auto aspect-[4/3] object-cover rounded-lg"
                                         onError={(e) => {

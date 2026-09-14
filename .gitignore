@@ -19,6 +19,7 @@
 
 # production
 /build
+public/images/gallery/thumbs/
 
 # misc
 .DS_Store
