@@ -226,6 +226,16 @@ export default function SponsorPage() {
             {error && <p className="text-red-400 m-0">{error}</p>}
           </div>
         </form>
+
+        <section className="mt-10 border-t border-white/10 pt-8" aria-labelledby="sponsors-supporters-heading">
+          <h2 id="sponsors-supporters-heading" className="mb-2 text-2xl font-bold">
+            Sponsors &amp; Supporters
+          </h2>
+          <p className="m-0 text-gray-300">
+            SUAS@STEM currently has no external sponsors. We are grateful for the support of
+            Melissa Wrenchey, Andy Christensen, Bill Cattin, and James Boyd.
+          </p>
+        </section>
       </div>
     </main>
   );
