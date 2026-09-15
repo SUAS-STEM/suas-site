@@ -32,6 +32,12 @@ type StatusData = {
   file_mtime: string;
   served_at: string;
   poll_interval_seconds: number;
+  mission_timing?: {
+    sample_count: number;
+    median_duration_minutes: number | null;
+    recent_durations_minutes: number[];
+    method: string;
+  };
 };
 
 const POLL_MS = 1_000;
@@ -142,14 +148,19 @@ export default function StatusPage() {
       })
     : [];
   const parallelFlightLines = 2;
-  const maxMissionMinutes = 45;
+  const fallbackMissionMinutes = 45;
+  const observedMissionMinutes = data?.mission_timing?.median_duration_minutes ?? null;
+  const missionMinutesPerWave = observedMissionMinutes ?? fallbackMissionMinutes;
   const missionWavesAhead = teamsAheadOfTesla == null ? null : Math.ceil(teamsAheadOfTesla / parallelFlightLines);
-  const missionEtaMinutes = missionWavesAhead == null ? null : missionWavesAhead * maxMissionMinutes;
+  const missionEtaMinutes = missionWavesAhead == null ? null : Math.round(missionWavesAhead * missionMinutesPerWave);
   const missionEtaLabel = missionEtaMinutes == null
     ? "—"
     : missionEtaMinutes === 0
       ? "Now / next"
       : `~${missionEtaMinutes} min`;
+  const missionEtaBasis = observedMissionMinutes != null
+    ? `Based on ${data?.mission_timing?.sample_count ?? 0} completed mission${data?.mission_timing?.sample_count === 1 ? "" : "s"} · median ${observedMissionMinutes.toFixed(1)} min`
+    : "No completed mission timing yet · using 45 min maximum";
 
   return (
     <main className="min-h-full flex-1 px-4 py-8 text-white md:px-24 md:py-16">
@@ -250,7 +261,7 @@ export default function StatusPage() {
                   </tbody>
                 </table>
               </div>
-              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA is a rough slot estimate: up to 45 min per mission with two flight lines operating in parallel. Actual timing can be faster as teams finish early or change order.</p> : null}
+              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA uses two parallel flight lines and the observed duration of recent completed missions. {missionEtaBasis}. It updates automatically as more teams finish.</p> : null}
             </section>
 
             <section>

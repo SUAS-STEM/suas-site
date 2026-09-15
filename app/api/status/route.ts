@@ -30,6 +30,12 @@ type StatusFile = {
   gone: Team[];
   tesla: Team | null;
   teams: Team[];
+  mission_timing?: {
+    sample_count: number;
+    median_duration_minutes: number | null;
+    recent_durations_minutes: number[];
+    method: string;
+  };
 };
 
 function validStatus(value: unknown): value is StatusFile {
