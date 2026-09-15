@@ -203,24 +203,24 @@ export default function StatusPage() {
                     <p className="!m-0 mt-1 text-[10px] uppercase tracking-wider text-white/45">mission order</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                  <div><p className="spec-label">Teams ahead</p><p className="!m-0 font-mono text-xl font-semibold">{teamsAheadOfTesla ?? "—"}</p></div>
-                  <div><p className="spec-label">Queue ETA</p><p className="!m-0 font-mono text-sm font-semibold">{missionEtaLabel}</p></div>
-                  <div><p className="spec-label">Safety</p><p className="!m-0 text-sm font-semibold">{data.tesla?.safety_inspection || "Pending"}</p></div>
-                  <div><p className="spec-label">Rapid Response</p><p className="!m-0 text-sm font-semibold">{data.tesla?.design_for_rapid_response || "Pending"}</p></div>
-                  <div><p className="spec-label">Location</p><p className="!m-0 text-sm font-semibold">{data.tesla?.location || "Not reported"}</p></div>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5 sm:gap-3">
+                  <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-3"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Teams ahead</p><p className="!m-0 font-mono text-2xl font-bold leading-none text-white">{teamsAheadOfTesla ?? "—"}</p></div>
+                  <div className="rounded-lg border border-teal-300/20 bg-teal-300/[0.04] px-3 py-3"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-200/60">Queue ETA</p><p className="!m-0 font-mono text-xl font-bold leading-none text-teal-100 sm:text-lg">{missionEtaLabel}</p></div>
+                  <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-3"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Safety</p><p className="!m-0 text-base font-semibold leading-tight text-white">{data.tesla?.safety_inspection || "Pending"}</p></div>
+                  <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-3"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Rapid Response</p><p className="!m-0 text-base font-semibold leading-tight text-white">{data.tesla?.design_for_rapid_response || "Pending"}</p></div>
+                  <div className="col-span-2 rounded-lg border border-white/10 bg-black/10 px-3 py-3 sm:col-span-1"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Location</p><p className="!m-0 text-base font-semibold leading-tight text-white">{data.tesla?.location || "Not reported"}</p></div>
                 </div>
               </div>
 
               <div className="mb-4 grid grid-cols-2 gap-3">
                 <div className="spec-card">
-                  <p className="spec-label">Current / next</p>
-                  <p className="!mb-1 font-mono text-2xl font-semibold">#{data.current_team?.flight_order || "—"} {data.current_team?.uid || "—"}</p>
+                  <p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Current / next</p>
+                  <p className="!mb-2 font-mono text-2xl font-bold leading-none text-white">#{data.current_team?.flight_order || "—"} {data.current_team?.uid || "—"}</p>
                   <div className="flex flex-wrap items-center gap-2"><StatusBadge value={data.current_team?.flight_status || "Pending"} /><span className="text-xs text-white/45">{data.current_team?.location || ""}</span></div>
                 </div>
                 <div className="spec-card">
-                  <p className="spec-label">Following</p>
-                  <p className="!mb-1 font-mono text-2xl font-semibold">#{data.next_team?.flight_order || "—"} {data.next_team?.uid || "—"}</p>
+                  <p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Following</p>
+                  <p className="!mb-2 font-mono text-2xl font-bold leading-none text-white">#{data.next_team?.flight_order || "—"} {data.next_team?.uid || "—"}</p>
                   <div className="flex flex-wrap items-center gap-2"><StatusBadge value={data.next_team?.flight_status || "Pending"} /><span className="text-xs text-white/45">{data.next_team?.location || ""}</span></div>
                 </div>
               </div>
