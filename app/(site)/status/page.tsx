@@ -6,11 +6,11 @@ type Team = {
   flight_order: string;
   uid: string;
   team: string;
-  safety_inspection?: string;
-  design_for_rapid_response?: string;
-  location?: string;
+  safety_inspection: string;
+  design_for_rapid_response: string;
+  location: string;
   flight_status: string;
-  notes?: string;
+  notes: string;
 };
 
 type StatusData = {
@@ -168,9 +168,15 @@ export default function StatusPage() {
         return Number.isFinite(order) && order < teslaOrder && !goneUids.has(team.uid);
       }).length
     : null;
+  const flightOrderWindow = data && Number.isFinite(teslaOrder)
+    ? data.teams.filter((team) => {
+        const order = Number(team.flight_order);
+        return Number.isFinite(order) && order >= teslaOrder - 5 && order <= teslaOrder + 5;
+      })
+    : [];
   const safetyCounts = data
     ? data.teams.reduce((acc, team) => {
-        const value = team.safety_inspection.trim().toLowerCase();
+        const value = (team.safety_inspection || "").trim().toLowerCase();
         if (value === "passed") acc.passed += 1;
         else if (value === "in progress") acc.inProgress += 1;
         else if (value.includes("additional time")) acc.additionalTime += 1;
@@ -276,6 +282,43 @@ export default function StatusPage() {
                 <div><p className="spec-label">Notes</p><p className="!m-0 text-sm">{data.tesla?.notes || "—"}</p></div>
               </div>
             </div>
+
+            <section className="mb-10" aria-labelledby="our-flight-order-heading">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <span className="eyebrow">Flight order · our position</span>
+                  <h2 id="our-flight-order-heading" className="!mb-0 !mt-2 !text-left">Around Tesla STEM</h2>
+                </div>
+                <span className="font-mono text-xs text-white/45">Ordered exactly by official flight order</span>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {flightOrderWindow.map((team) => {
+                  const isTesla = team.uid === "TSLA";
+                  const isCurrent = team.uid === data.current_team?.uid;
+                  const isGone = goneUids.has(team.uid);
+                  return (
+                    <div
+                      key={team.uid}
+                      className={
+                        "grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 rounded-lg border px-4 py-3 " +
+                        (isTesla
+                          ? "border-teal-300/50 bg-teal-300/10"
+                          : isCurrent
+                            ? "border-sky-300/35 bg-sky-300/[0.07]"
+                            : "border-white/10 bg-white/[0.025]")
+                      }
+                    >
+                      <div className="font-mono text-lg font-semibold">#{team.flight_order}</div>
+                      <div className="min-w-0">
+                        <p className={(isTesla ? "text-teal-100 " : "") + "!mb-0 truncate font-semibold"}>{team.team}</p>
+                        <p className="!mb-0 font-mono text-xs text-white/45">{team.uid}{isTesla ? " · OUR TEAM" : isCurrent ? " · CURRENT / NEXT" : isGone ? " · FLOWN" : ""}</p>
+                      </div>
+                      <StatusBadge value={team.flight_status} />
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
 
             <section className="mb-10" aria-labelledby="safety-inspection-heading">
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
