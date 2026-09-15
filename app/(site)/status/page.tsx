@@ -37,6 +37,9 @@ type StatusData = {
     median_duration_minutes: number | null;
     recent_durations_minutes: number[];
     method: string;
+    estimated_queue_minutes?: number | null;
+    runway_available_in_minutes?: Record<string, number>;
+    scheduled_ahead?: Array<{ uid: string; runway: string; start_in_minutes: number }>;
   };
 };
 
@@ -147,20 +150,22 @@ export default function StatusPage() {
         return Number.isFinite(order) && order >= start && order <= teslaOrder + 2;
       })
     : [];
-  const parallelFlightLines = 2;
   const fallbackMissionMinutes = 45;
   const observedMissionMinutes = data?.mission_timing?.median_duration_minutes ?? null;
-  const missionMinutesPerWave = observedMissionMinutes ?? fallbackMissionMinutes;
-  const missionWavesAhead = teamsAheadOfTesla == null ? null : Math.ceil(teamsAheadOfTesla / parallelFlightLines);
-  const missionEtaMinutes = missionWavesAhead == null ? null : Math.round(missionWavesAhead * missionMinutesPerWave);
+  const modeledEtaMinutes = data?.mission_timing?.estimated_queue_minutes ?? null;
+  const missionEtaMinutes = modeledEtaMinutes != null
+    ? Math.round(modeledEtaMinutes)
+    : teamsAheadOfTesla == null
+      ? null
+      : Math.round(Math.ceil(teamsAheadOfTesla / 2) * (observedMissionMinutes ?? fallbackMissionMinutes));
   const missionEtaLabel = missionEtaMinutes == null
     ? "—"
     : missionEtaMinutes === 0
       ? "Now / next"
       : `~${missionEtaMinutes} min`;
   const missionEtaBasis = observedMissionMinutes != null
-    ? `Based on ${data?.mission_timing?.sample_count ?? 0} completed mission${data?.mission_timing?.sample_count === 1 ? "" : "s"} · median ${observedMissionMinutes.toFixed(1)} min`
-    : "No completed mission timing yet · using 45 min maximum";
+    ? `Two-runway queue model · last ${data?.mission_timing?.sample_count ?? 0} completed mission${data?.mission_timing?.sample_count === 1 ? "" : "s"} · ${observedMissionMinutes.toFixed(1)} min pace`
+    : "Two-runway queue model · no completed timing yet · using 45 min maximum";
 
   return (
     <main className="min-h-full flex-1 px-4 py-8 text-white md:px-24 md:py-16">
@@ -261,7 +266,7 @@ export default function StatusPage() {
                   </tbody>
                 </table>
               </div>
-              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA uses two parallel flight lines and the observed duration of the last 2 completed missions. {missionEtaBasis}. It updates automatically as more teams finish.</p> : null}
+              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA models Flight Line 1/A and 2/B separately, including the active mission remaining time and each team already assigned to a flight line. {missionEtaBasis}. It updates automatically as more teams finish.</p> : null}
             </section>
 
             <section>
