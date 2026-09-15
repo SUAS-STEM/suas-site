@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useState } from "react";
 import exifr from "exifr";
 import Link from "next/link";
+import { DEFAULT_STITCH_SETTINGS, STITCH_SETTING_VALUES } from "@/lib/stitchSettings";
+import type { StitchSettings } from "@/lib/stitchSettings";
 
 const POLL_MS = 3000;
 const STAGES = [
@@ -21,6 +23,7 @@ type StitchData = {
   orthophoto?: { ready?: boolean; sizeBytes?: number | null };
   timing?: { startupSeconds?: number | null; processingSeconds?: number | null };
   timestamps?: { queuedAt?: string | null; startedAt?: string | null; completedAt?: string | null };
+  settings?: StitchSettings | null;
   logs?: string[]; failure?: unknown; artifact?: { name?: string; sizeBytes?: number | null; url?: string | null; githubName?: string; previewName?: string } | null;
   updatedAt?: string;
 };
@@ -105,6 +108,7 @@ export default function StitchPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [localJobId, setLocalJobId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [settings, setSettings] = useState<StitchSettings>(DEFAULT_STITCH_SETTINGS);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,7 +180,7 @@ export default function StitchPage() {
       }
 
       setActionMessage("Packaging originals and starting GitHub Actions…");
-      const start = await fetch(`/api/stitch/jobs/${id}/start`, { method: "POST" });
+      const start = await fetch(`/api/stitch/jobs/${id}/start`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ settings }) });
       const started = await start.json();
       if (!start.ok) throw new Error(started.error || `Start failed (${start.status})`);
       setActionMessage(`Job ${id.slice(0, 8)} dispatched`);
@@ -248,6 +252,15 @@ export default function StitchPage() {
                 <button type="button" onClick={() => void runTest()} disabled={running || busy} className="rounded-lg border border-white/15 bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-35">Run Brighton test</button>
               </div>
 
+              <div className="mt-5 rounded-lg border border-white/10 bg-white/[0.025] p-4">
+                <div className="mb-3"><p className="spec-label">ODM settings</p><p className="!m-0 text-xs text-white/50">These bounded options apply to the next custom upload. Higher quality uses more runner time and memory.</p></div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <label className="text-xs text-white/60">Feature quality<select value={settings.featureQuality} disabled={running || busy} onChange={(e) => setSettings((old) => ({ ...old, featureQuality: e.target.value as StitchSettings["featureQuality"] }))} className="mt-1 block w-full rounded-md border border-white/15 bg-black/25 px-2.5 py-2 text-sm text-white"><option value={STITCH_SETTING_VALUES.featureQuality[0]}>Lowest · fastest</option><option value="low">Low</option><option value="medium">Medium · balanced</option><option value="high">High</option><option value="ultra">Ultra · slowest</option></select></label>
+                  <label className="text-xs text-white/60">Point-cloud quality<select value={settings.pcQuality} disabled={running || busy} onChange={(e) => setSettings((old) => ({ ...old, pcQuality: e.target.value as StitchSettings["pcQuality"] }))} className="mt-1 block w-full rounded-md border border-white/15 bg-black/25 px-2.5 py-2 text-sm text-white"><option value="lowest">Lowest · fastest</option><option value="low">Low</option><option value="medium">Medium · balanced</option><option value="high">High</option><option value="ultra">Ultra · slowest</option></select></label>
+                  <label className="text-xs text-white/60">Orthophoto resolution<select value={settings.orthophotoResolution} disabled={running || busy} onChange={(e) => setSettings((old) => ({ ...old, orthophotoResolution: Number(e.target.value) as StitchSettings["orthophotoResolution"] }))} className="mt-1 block w-full rounded-md border border-white/15 bg-black/25 px-2.5 py-2 text-sm text-white"><option value="2">2 cm / px · detailed</option><option value="5">5 cm / px · balanced</option><option value="10">10 cm / px · faster</option><option value="20">20 cm / px · fastest</option></select></label>
+                </div>
+              </div>
+
               <div
                 className={`mt-4 rounded-lg border border-dashed p-5 text-center text-sm transition ${dragging ? "border-teal-200 bg-teal-300/10 text-teal-100" : "border-white/15 bg-white/[0.02] text-white/45"} ${running || busy ? "opacity-40" : ""}`}
                 onDragOver={(event) => { event.preventDefault(); if (!running && !busy) setDragging(true); }}
@@ -302,6 +315,7 @@ export default function StitchPage() {
           <div className="spec-card"><p className="spec-label">WebODM startup</p><p className="!m-0 font-mono text-xl font-semibold">{duration(data?.timing?.startupSeconds ?? data?.webodm?.readySeconds)}</p><p className="!m-0 mt-1 text-xs text-white/45">{data?.webodm?.ready ? "Ready" : "Waiting"}</p></div>
           <div className="spec-card"><p className="spec-label">ODM processing</p><p className="!m-0 font-mono text-xl font-semibold">{duration(data?.timing?.processingSeconds ?? data?.odm?.processingSeconds)}</p><p className="!m-0 mt-1 text-xs text-white/45">{data?.odm?.status || "Idle"}</p></div>
         </div>
+        {data?.settings && <div className="spec-card !mb-6"><p className="spec-label">Custom ODM settings</p><p className="!m-0 text-sm text-white/70">Feature {data.settings.featureQuality} · point cloud {data.settings.pcQuality} · orthophoto {data.settings.orthophotoResolution} cm / px</p></div>}
 
         {(data?.orthophoto?.ready || activeJobId) && (
           <div className="spec-card !mb-6">

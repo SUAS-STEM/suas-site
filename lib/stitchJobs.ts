@@ -1,5 +1,10 @@
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { DEFAULT_STITCH_SETTINGS, STITCH_SETTING_VALUES } from "@/lib/stitchSettings";
+import type { StitchSettings } from "@/lib/stitchSettings";
+
+export { DEFAULT_STITCH_SETTINGS, STITCH_SETTING_VALUES } from "@/lib/stitchSettings";
+export type { StitchSettings } from "@/lib/stitchSettings";
 
 export const JOB_ROOT = "/data/stitch/jobs";
 export const MAX_FILES_PER_JOB = 200;
@@ -8,7 +13,18 @@ export const MAX_JOB_BYTES = 800 * 1024 * 1024;
 export const UNSTARTED_RETENTION_MS = 24 * 60 * 60 * 1000;
 export const STALE_STARTED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 export type StitchFileMeta = { name: string; storedName: string; size: number; type: string; exif?: Record<string, unknown> | null };
-export type StitchJobMeta = { id: string; token: string; createdAt: string; startedAt?: string | null; files: StitchFileMeta[]; totalBytes: number };
+export type StitchJobMeta = { id: string; token: string; createdAt: string; startedAt?: string | null; settings?: StitchSettings; files: StitchFileMeta[]; totalBytes: number };
+
+export function normalizeStitchSettings(input: unknown): StitchSettings {
+  const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
+  const featureQuality = value.featureQuality;
+  const pcQuality = value.pcQuality;
+  const resolution = Number(value.orthophotoResolution);
+  if (!STITCH_SETTING_VALUES.featureQuality.includes(featureQuality as StitchSettings["featureQuality"])) throw new Error("Invalid feature quality");
+  if (!STITCH_SETTING_VALUES.pcQuality.includes(pcQuality as StitchSettings["pcQuality"])) throw new Error("Invalid point-cloud quality");
+  if (!STITCH_SETTING_VALUES.orthophotoResolution.includes(resolution as StitchSettings["orthophotoResolution"])) throw new Error("Invalid orthophoto resolution");
+  return { featureQuality: featureQuality as StitchSettings["featureQuality"], pcQuality: pcQuality as StitchSettings["pcQuality"], orthophotoResolution: resolution as StitchSettings["orthophotoResolution"] };
+}
 
 export function safeJobId(id: string) {
   if (!/^[a-zA-Z0-9_-]{8,80}$/.test(id)) throw new Error("Invalid job id");
