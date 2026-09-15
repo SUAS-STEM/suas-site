@@ -141,13 +141,15 @@ export default function StatusPage() {
         return Number.isFinite(order) && order >= start && order <= teslaOrder + 2;
       })
     : [];
-  const missionEtaLabel = teamsAheadOfTesla == null
+  const parallelFlightLines = 2;
+  const maxMissionMinutes = 45;
+  const missionWavesAhead = teamsAheadOfTesla == null ? null : Math.ceil(teamsAheadOfTesla / parallelFlightLines);
+  const missionEtaMinutes = missionWavesAhead == null ? null : missionWavesAhead * maxMissionMinutes;
+  const missionEtaLabel = missionEtaMinutes == null
     ? "—"
-    : teamsAheadOfTesla === 0
+    : missionEtaMinutes === 0
       ? "Now / next"
-      : data?.gone_count
-        ? `${teamsAheadOfTesla} teams`
-        : "Waiting for pace";
+      : `~${missionEtaMinutes} min`;
 
   return (
     <main className="min-h-full flex-1 px-4 py-8 text-white md:px-24 md:py-16">
@@ -248,7 +250,7 @@ export default function StatusPage() {
                   </tbody>
                 </table>
               </div>
-              {data.gone_count === 0 && teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">Mission ETA will become more meaningful once completed flights establish an observed pace. Until then, teams-ahead is the reliable indicator.</p> : null}
+              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA is a rough slot estimate: up to 45 min per mission with two flight lines operating in parallel. Actual timing can be faster as teams finish early or change order.</p> : null}
             </section>
 
             <section>
