@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { NextResponse } from "next/server";
@@ -12,7 +12,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const meta = await readJob(id);
     if (!meta.files.length) return NextResponse.json({ error: "No images" }, { status: 404 });
     const output = path.join(jobDir(id), "input-preview.jpg");
-    await access(output);
     try {
       return new NextResponse(await readFile(output), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, no-store" } });
     } catch {
