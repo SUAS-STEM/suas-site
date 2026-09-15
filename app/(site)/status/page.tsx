@@ -261,7 +261,7 @@ export default function StatusPage() {
                   </tbody>
                 </table>
               </div>
-              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA uses two parallel flight lines and the observed duration of recent completed missions. {missionEtaBasis}. It updates automatically as more teams finish.</p> : null}
+              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA uses two parallel flight lines and the observed duration of the last 2 completed missions. {missionEtaBasis}. It updates automatically as more teams finish.</p> : null}
             </section>
 
             <section>
