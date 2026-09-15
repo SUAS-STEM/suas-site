@@ -43,7 +43,7 @@ type StatusData = {
   };
 };
 
-const POLL_MS = 1_000;
+const FALLBACK_POLL_MS = 1_000;
 
 function statusTone(status: string) {
   const s = status.toLowerCase();
@@ -106,9 +106,22 @@ export default function StatusPage() {
 
   useEffect(() => {
     refresh();
-    const poll = window.setInterval(refresh, POLL_MS);
+    const stream = new EventSource("/api/status/stream");
+    stream.onmessage = (event) => {
+      try {
+        const next = JSON.parse(event.data) as StatusData;
+        setData(next);
+        setError(null);
+      } catch (err) {
+        console.error("Invalid live status event", err);
+      }
+    };
+    const poll = window.setInterval(() => {
+      if (stream.readyState !== EventSource.OPEN) void refresh();
+    }, FALLBACK_POLL_MS);
     const clock = window.setInterval(() => tick((n) => n + 1), 1000);
     return () => {
+      stream.close();
       window.clearInterval(poll);
       window.clearInterval(clock);
     };
