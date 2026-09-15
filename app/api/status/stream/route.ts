@@ -27,59 +27,60 @@ function enrich(raw: string, mtime: Date) {
   };
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   const encoder = new TextEncoder();
+  // Build the first event before constructing the stream. This guarantees a
+  // body chunk is ready synchronously when Next.js starts sending the response.
+  const [initialRaw, initialInfo] = await Promise.all([readFile(STATUS_FILE, "utf8"), stat(STATUS_FILE)]);
+  const initialPayload = enrich(initialRaw, initialInfo.mtime);
+
   let closed = false;
   let timer: ReturnType<typeof setInterval> | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
-  let lastMtimeMs = -1;
+  let lastMtimeMs = initialInfo.mtimeMs;
   let busy = false;
+
+  const cleanup = () => {
+    closed = true;
+    if (timer) clearInterval(timer);
+    if (heartbeat) clearInterval(heartbeat);
+  };
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const sendLatest = async (force = false) => {
+      controller.enqueue(encoder.encode(`retry: 1000\n: stream-open ${Date.now()}\n\ndata: ${JSON.stringify(initialPayload)}\n\n`));
+
+      const sendLatest = async () => {
         if (closed || busy) return;
         busy = true;
         try {
           const info = await stat(STATUS_FILE);
-          if (!force && info.mtimeMs === lastMtimeMs) return;
+          if (info.mtimeMs === lastMtimeMs) return;
           const raw = await readFile(STATUS_FILE, "utf8");
           const payload = enrich(raw, info.mtime);
           lastMtimeMs = info.mtimeMs;
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
-        } catch (error) {
-          if (!closed) {
-            controller.enqueue(encoder.encode(`event: warning\ndata: ${JSON.stringify({ error: "status temporarily unavailable" })}\n\n`));
-          }
+        } catch {
+          if (!closed) controller.enqueue(encoder.encode(`event: warning\ndata: {"error":"status temporarily unavailable"}\n\n`));
         } finally {
           busy = false;
         }
       };
 
-      void sendLatest(true);
-      timer = setInterval(() => void sendLatest(false), CHECK_MS);
+      timer = setInterval(() => void sendLatest(), CHECK_MS);
       heartbeat = setInterval(() => {
         if (!closed) controller.enqueue(encoder.encode(`: heartbeat ${Date.now()}\n\n`));
       }, HEARTBEAT_MS);
-
-      request.signal.addEventListener("abort", () => {
-        closed = true;
-        if (timer) clearInterval(timer);
-        if (heartbeat) clearInterval(heartbeat);
-        try { controller.close(); } catch {}
-      }, { once: true });
     },
     cancel() {
-      closed = true;
-      if (timer) clearInterval(timer);
-      if (heartbeat) clearInterval(heartbeat);
+      cleanup();
     },
   });
 
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      "Cache-Control": "no-cache, no-store, no-transform, max-age=0, must-revalidate",
       "CDN-Cache-Control": "no-store",
       "Connection": "keep-alive",
       "X-Accel-Buffering": "no",
