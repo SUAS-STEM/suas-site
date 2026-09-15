@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ORIGIN = process.env.STITCH_STATUS_ORIGIN || "http://172.19.0.1:3005";
+const ORIGIN = process.env.STITCH_STATUS_ORIGIN || "http://host.docker.internal:3005";
 
 export async function GET() {
   try {
