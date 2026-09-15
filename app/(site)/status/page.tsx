@@ -158,6 +158,7 @@ export default function StatusPage() {
 
   const totalTeams = data?.teams.length ?? 0;
   const allTableTeams = data ? [...data.teams, ...(data.other_teams || [])] : [];
+  const currentOrder = data?.current_team ? Number(data.current_team.flight_order) : NaN;
   const progress = totalTeams && data ? Math.min(100, (data.gone_count / totalTeams) * 100) : 0;
   const teslaOrder = data?.tesla ? Number(data.tesla.flight_order) : NaN;
   const goneUids = new Set(data?.gone.map((team) => team.uid) || []);
@@ -166,6 +167,17 @@ export default function StatusPage() {
         const order = Number(team.flight_order);
         return Number.isFinite(order) && order < teslaOrder && !goneUids.has(team.uid);
       }).length
+    : null;
+  const safetyCounts = data
+    ? data.teams.reduce((acc, team) => {
+        const value = team.safety_inspection.trim().toLowerCase();
+        if (value === "passed") acc.passed += 1;
+        else if (value === "in progress") acc.inProgress += 1;
+        else if (value.includes("additional time")) acc.additionalTime += 1;
+        else if (value) acc.other += 1;
+        else acc.pending += 1;
+        return acc;
+      }, { passed: 0, inProgress: 0, additionalTime: 0, pending: 0, other: 0 })
     : null;
 
   return (
@@ -200,14 +212,18 @@ export default function StatusPage() {
           </div>
         ) : (
           <>
-            <div className="mb-7 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="mb-7 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
+              <div className="spec-card">
+                <p className="spec-value">{Number.isFinite(currentOrder) ? "#" + currentOrder : "—"}</p>
+                <p className="spec-label">Current flight-order position</p>
+              </div>
               <div className="spec-card">
                 <p className="spec-value">{data.gone_count}/{totalTeams}</p>
                 <p className="spec-label">Teams flown</p>
               </div>
               <div className="spec-card">
                 <p className="spec-value">#{data.tesla?.flight_order || "—"}</p>
-                <p className="spec-label">Tesla flight order</p>
+                <p className="spec-label">Our flight order</p>
               </div>
               <div className="spec-card">
                 <p className="spec-value">{teamsAheadOfTesla ?? "—"}</p>
@@ -235,12 +251,12 @@ export default function StatusPage() {
 
             <div className="mb-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
               <TeamCard
-                label={data.current_is_inferred ? "Current / next (inferred)" : "Current team"}
+                label={data.current_is_inferred ? "Current in flight order (inferred)" : "Current in flight order"}
                 team={data.current_team}
                 qualifier={data.current_is_inferred ? "Earliest non-final holding/ready team" : undefined}
               />
-              <TeamCard label="Last team flown" team={data.last_team_gone} />
-              <TeamCard label="Next team" team={data.next_team} />
+              <TeamCard label="Previous team flown" team={data.last_team_gone} />
+              <TeamCard label="Following in flight order" team={data.next_team} />
             </div>
 
             <div className="mb-10 rounded-lg border border-teal-300/25 bg-teal-300/[0.055] p-5 shadow-[0_0_30px_rgba(79,209,213,0.05)]">
@@ -260,6 +276,30 @@ export default function StatusPage() {
                 <div><p className="spec-label">Notes</p><p className="!m-0 text-sm">{data.tesla?.notes || "—"}</p></div>
               </div>
             </div>
+
+            <section className="mb-10" aria-labelledby="safety-inspection-heading">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <span className="eyebrow">Pre-flight gate</span>
+                  <h2 id="safety-inspection-heading" className="!mb-0 !mt-2 !text-left">Safety Inspection</h2>
+                </div>
+                <StatusBadge value={data.tesla?.safety_inspection || "Pending"} />
+              </div>
+              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="spec-card"><p className="spec-value">{safetyCounts?.passed ?? 0}</p><p className="spec-label">Passed</p></div>
+                <div className="spec-card"><p className="spec-value">{safetyCounts?.inProgress ?? 0}</p><p className="spec-label">In progress</p></div>
+                <div className="spec-card"><p className="spec-value">{safetyCounts?.additionalTime ?? 0}</p><p className="spec-label">Additional time</p></div>
+                <div className="spec-card"><p className="spec-value">{safetyCounts?.pending ?? 0}</p><p className="spec-label">Pending / blank</p></div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/[0.025] p-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div><p className="spec-label">Tesla inspection</p><p className="!m-0 text-lg font-semibold">{data.tesla?.safety_inspection || "Pending"}</p></div>
+                  <div><p className="spec-label">Tesla location</p><p className="!m-0 text-lg font-semibold">{data.tesla?.location || "Not reported"}</p></div>
+                  <div><p className="spec-label">Teams passed</p><p className="!m-0 text-lg font-semibold">{safetyCounts?.passed ?? 0}/{totalTeams}</p></div>
+                </div>
+                <p className="!mb-0 !mt-4 text-sm text-white/55">Safety inspection is required before mission flight. This mirrors the official live sheet and never infers a pass from flight order alone.</p>
+              </div>
+            </section>
 
             <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="rounded-lg border border-white/10 bg-white/[0.025] p-5">
