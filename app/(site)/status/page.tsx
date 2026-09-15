@@ -40,6 +40,17 @@ type StatusData = {
     estimated_queue_minutes?: number | null;
     runway_available_in_minutes?: Record<string, number>;
     scheduled_ahead?: Array<{ uid: string; runway: string; start_in_minutes: number }>;
+    historical_sample_count?: number;
+    excluded_outlier_count?: number;
+    excluded_outliers?: Array<{ uid: string; duration_minutes: number }>;
+    lunch_pause?: {
+      start_at: string;
+      resume_at: string;
+      source: string;
+      active: boolean;
+      minutes_until_resume: number;
+      applied_to_eta: boolean;
+    } | null;
   };
 };
 
@@ -74,6 +85,18 @@ function formatTime(value: string | undefined) {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
+  });
+}
+
+function formatCompetitionTime(value: string | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Chicago",
+    timeZoneName: "short",
   });
 }
 
@@ -179,9 +202,11 @@ export default function StatusPage() {
     : missionEtaMinutes === 0
       ? "Now / next"
       : `~${missionEtaMinutes} min`;
+  const lunchResumeLabel = formatCompetitionTime(data?.mission_timing?.lunch_pause?.resume_at);
+  const outlierCount = data?.mission_timing?.excluded_outlier_count ?? 0;
   const missionEtaBasis = observedMissionMinutes != null
-    ? `Two-runway queue model · last ${data?.mission_timing?.sample_count ?? 0} completed mission${data?.mission_timing?.sample_count === 1 ? "" : "s"} · ${observedMissionMinutes.toFixed(1)} min pace`
-    : "Two-runway queue model · no completed timing yet · using 45 min maximum";
+    ? `Two-runway queue · ${data?.mission_timing?.sample_count ?? 0} recent non-outlier mission${data?.mission_timing?.sample_count === 1 ? "" : "s"} · ${observedMissionMinutes.toFixed(1)} min pace${outlierCount ? ` · ${outlierCount} outlier${outlierCount === 1 ? "" : "s"} excluded` : ""}${data?.mission_timing?.lunch_pause?.applied_to_eta && lunchResumeLabel ? ` · lunch until ${lunchResumeLabel}` : ""}`
+    : `Two-runway queue · no usable completed timing yet · using 45 min maximum${data?.mission_timing?.lunch_pause?.applied_to_eta && lunchResumeLabel ? ` · lunch until ${lunchResumeLabel}` : ""}`;
 
   return (
     <main className="min-h-full flex-1 px-4 py-8 text-white md:px-24 md:py-16">
@@ -282,7 +307,7 @@ export default function StatusPage() {
                   </tbody>
                 </table>
               </div>
-              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA models Flight Line 1/A and 2/B separately, including the active mission remaining time and each team already assigned to a flight line. {missionEtaBasis}. It updates automatically as more teams finish.</p> : null}
+              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA models Flight Line 1/A and 2/B separately, rejects abnormal mission-duration outliers, accounts for the active mission and assigned flight line, and includes scheduled lunch downtime. {missionEtaBasis}. It updates automatically as more teams finish.</p> : null}
             </section>
 
             <section>
