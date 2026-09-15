@@ -42,7 +42,12 @@ type StatusData = {
     scheduled_ahead?: Array<{ uid: string; runway: string; start_in_minutes: number }>;
     historical_sample_count?: number;
     excluded_outlier_count?: number;
-    excluded_outliers?: Array<{ uid: string; duration_minutes: number }>;
+    excluded_outliers?: Array<{ uid: string; duration_minutes: number; reason?: string }>;
+    eta_range_minutes?: { low: number; high: number } | null;
+    confidence?: "low" | "medium" | "high";
+    simulations?: number;
+    runway_models?: Record<string, { sample_count: number; using_pooled_model: boolean; weighted_mean_minutes: number | null }>;
+    backtest?: { n: number; mae_minutes: number | null; by_horizon: Record<string, { n: number; mae_minutes: number; median_error_minutes: number }> };
     lunch_pause?: {
       start_at: string;
       resume_at: string;
@@ -98,6 +103,16 @@ function formatCompetitionTime(value: string | undefined) {
     timeZone: "America/Chicago",
     timeZoneName: "short",
   });
+}
+
+function formatDurationMinutes(minutes: number | null, approximate = false) {
+  if (minutes == null || !Number.isFinite(minutes)) return "—";
+  const rounded = Math.max(0, Math.round(minutes));
+  const prefix = approximate ? "~" : "";
+  if (rounded < 60) return `${prefix}${rounded} min`;
+  const hours = Math.floor(rounded / 60);
+  const mins = rounded % 60;
+  return `${prefix}${hours}h${mins ? ` ${mins}m` : ""}`;
 }
 
 function relativeAge(seconds: number) {
@@ -201,12 +216,18 @@ export default function StatusPage() {
     ? "—"
     : missionEtaMinutes === 0
       ? "Now / next"
-      : `~${missionEtaMinutes} min`;
+      : formatDurationMinutes(missionEtaMinutes, true);
+  const etaRange = data?.mission_timing?.eta_range_minutes;
+  const etaRangeLabel = etaRange
+    ? `${formatDurationMinutes(etaRange.low)}–${formatDurationMinutes(etaRange.high)} likely`
+    : null;
+  const etaConfidence = data?.mission_timing?.confidence;
   const lunchResumeLabel = formatCompetitionTime(data?.mission_timing?.lunch_pause?.resume_at);
   const outlierCount = data?.mission_timing?.excluded_outlier_count ?? 0;
+  const backtest = data?.mission_timing?.backtest;
   const missionEtaBasis = observedMissionMinutes != null
-    ? `Two-runway queue · ${data?.mission_timing?.sample_count ?? 0} recent non-outlier mission${data?.mission_timing?.sample_count === 1 ? "" : "s"} · ${observedMissionMinutes.toFixed(1)} min pace${outlierCount ? ` · ${outlierCount} outlier${outlierCount === 1 ? "" : "s"} excluded` : ""}${data?.mission_timing?.lunch_pause?.applied_to_eta && lunchResumeLabel ? ` · lunch until ${lunchResumeLabel}` : ""}`
-    : `Two-runway queue · no usable completed timing yet · using 45 min maximum${data?.mission_timing?.lunch_pause?.applied_to_eta && lunchResumeLabel ? ` · lunch until ${lunchResumeLabel}` : ""}`;
+    ? `Probabilistic two-runway model · ${data?.mission_timing?.sample_count ?? 0} normal completed mission${data?.mission_timing?.sample_count === 1 ? "" : "s"} · recency-weighted ${observedMissionMinutes.toFixed(1)} min pace · ${data?.mission_timing?.simulations ?? 0} simulations${outlierCount ? ` · ${outlierCount} abnormal/outlier run${outlierCount === 1 ? "" : "s"} excluded` : ""}${data?.mission_timing?.lunch_pause?.applied_to_eta && lunchResumeLabel ? ` · lunch until ${lunchResumeLabel}` : ""}${backtest?.n ? ` · live backtest MAE ${backtest.mae_minutes?.toFixed(1)} min` : " · live backtesting enabled"}`
+    : `Probabilistic two-runway model · no usable completed timing yet · conservative fallback${data?.mission_timing?.lunch_pause?.applied_to_eta && lunchResumeLabel ? ` · lunch until ${lunchResumeLabel}` : ""}`;
 
   return (
     <main className="min-h-full flex-1 px-4 py-8 text-white md:px-24 md:py-16">
@@ -251,7 +272,7 @@ export default function StatusPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5 sm:gap-3">
                   <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-3"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Teams ahead</p><p className="!m-0 font-mono text-2xl font-bold leading-none text-white">{teamsAheadOfTesla ?? "—"}</p></div>
-                  <div className="rounded-lg border border-teal-300/20 bg-teal-300/[0.04] px-3 py-3"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-200/60">Queue ETA</p><p className="!m-0 font-mono text-xl font-bold leading-none text-teal-100 sm:text-lg">{missionEtaLabel}</p></div>
+                  <div className="rounded-lg border border-teal-300/20 bg-teal-300/[0.04] px-3 py-3"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-200/60">Queue ETA</p><p className="!m-0 font-mono text-xl font-bold leading-none text-teal-100 sm:text-lg">{missionEtaLabel}</p>{etaRangeLabel ? <p className="!mb-0 !mt-1.5 font-mono text-[9px] leading-tight text-teal-100/60">{etaRangeLabel}{etaConfidence ? ` · ${etaConfidence} confidence` : ""}</p> : null}</div>
                   <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-3"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Safety</p><p className="!m-0 text-base font-semibold leading-tight text-white">{data.tesla?.safety_inspection || "Pending"}</p></div>
                   <div className="rounded-lg border border-white/10 bg-black/10 px-3 py-3"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Rapid Response</p><p className="!m-0 text-base font-semibold leading-tight text-white">{data.tesla?.design_for_rapid_response || "Pending"}</p></div>
                   <div className="col-span-2 rounded-lg border border-white/10 bg-black/10 px-3 py-3 sm:col-span-1"><p className="!mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Location</p><p className="!m-0 text-base font-semibold leading-tight text-white">{data.tesla?.location || "Not reported"}</p></div>
@@ -307,7 +328,7 @@ export default function StatusPage() {
                   </tbody>
                 </table>
               </div>
-              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA models Flight Line 1/A and 2/B separately, rejects abnormal mission-duration outliers, accounts for the active mission and assigned flight line, and includes scheduled lunch downtime. {missionEtaBasis}. It updates automatically as more teams finish.</p> : null}
+              {teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">ETA uses a recency-weighted probabilistic simulation of Flight Line 1/A and 2/B, conditions active-flight remaining time on elapsed time, rejects abnormal terminal/outlier durations, respects operational not-before notes and lunch, and reports the 10th–90th percentile likely range. {missionEtaBasis}. It updates automatically as more teams finish.</p> : null}
             </section>
 
             <section>
