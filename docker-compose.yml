@@ -13,6 +13,7 @@ services:
       - .env.local
     volumes:
       - suas_data:/data
+      - /home/pi/suas-status:/run/suas-status:ro
 
 secrets:
   github_token:
