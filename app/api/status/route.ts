@@ -73,7 +73,7 @@ export async function GET() {
         stale_after_seconds: STALE_AFTER_SECONDS,
         file_mtime: fileInfo.mtime.toISOString(),
         served_at: new Date().toISOString(),
-        poll_interval_seconds: 10,
+        poll_interval_seconds: 1,
       },
       {
         headers: {

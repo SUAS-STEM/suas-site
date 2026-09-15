@@ -34,7 +34,7 @@ type StatusData = {
   poll_interval_seconds: number;
 };
 
-const POLL_MS = 10_000;
+const POLL_MS = 1_000;
 
 function statusTone(status: string) {
   const s = status.toLowerCase();
@@ -52,36 +52,6 @@ function StatusBadge({ value }: { value: string }) {
     <span className={"inline-flex rounded-full border px-2.5 py-1 font-mono text-[0.7rem] uppercase tracking-[0.12em] " + statusTone(value)}>
       {value || "Pending"}
     </span>
-  );
-}
-
-function TeamCard({
-  label,
-  team,
-  qualifier,
-}: {
-  label: string;
-  team: Team | null;
-  qualifier?: string;
-}) {
-  return (
-    <div className="spec-card min-h-36">
-      <p className="spec-label">{label}</p>
-      {team ? (
-        <>
-          <p className="!mb-1 font-mono text-sm text-teal-200">
-            #{team.flight_order} · {team.uid}
-          </p>
-          <p className="!mb-3 text-lg font-semibold leading-snug text-white">{team.team}</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge value={team.flight_status} />
-            {qualifier && <span className="text-xs text-white/50">{qualifier}</span>}
-          </div>
-        </>
-      ) : (
-        <p className="!mb-0 text-white/45">Not available yet</p>
-      )}
-    </div>
   );
 }
 
@@ -110,7 +80,6 @@ function relativeAge(seconds: number) {
 export default function StatusPage() {
   const [data, setData] = useState<StatusData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastBrowserFetch, setLastBrowserFetch] = useState<Date | null>(null);
   const [, tick] = useState(0);
 
   const refresh = useCallback(async () => {
@@ -120,7 +89,6 @@ export default function StatusPage() {
       const next = (await response.json()) as StatusData;
       setData(next);
       setError(null);
-      setLastBrowserFetch(new Date());
     } catch (err) {
       console.error(err);
       setError("Could not refresh live status. Showing the last successful snapshot if available.");
@@ -156,10 +124,7 @@ export default function StatusPage() {
   };
   const hp = healthPresentation[effectiveHealth];
 
-  const totalTeams = data?.teams.length ?? 0;
   const allTableTeams = data ? [...data.teams, ...(data.other_teams || [])] : [];
-  const currentOrder = data?.current_team ? Number(data.current_team.flight_order) : NaN;
-  const progress = totalTeams && data ? Math.min(100, (data.gone_count / totalTeams) * 100) : 0;
   const teslaOrder = data?.tesla ? Number(data.tesla.flight_order) : NaN;
   const goneUids = new Set(data?.gone.map((team) => team.uid) || []);
   const teamsAheadOfTesla = data && Number.isFinite(teslaOrder)
@@ -168,44 +133,25 @@ export default function StatusPage() {
         return Number.isFinite(order) && order < teslaOrder && !goneUids.has(team.uid);
       }).length
     : null;
-  const flightOrderWindow = data && Number.isFinite(teslaOrder)
+  const currentMissionOrder = data?.current_team ? Number(data.current_team.flight_order) : NaN;
+  const missionQueue = data && Number.isFinite(teslaOrder)
     ? data.teams.filter((team) => {
         const order = Number(team.flight_order);
-        return Number.isFinite(order) && order >= teslaOrder - 5 && order <= teslaOrder + 5;
+        const start = Number.isFinite(currentMissionOrder) ? Math.max(1, currentMissionOrder) : Math.max(1, teslaOrder - 8);
+        return Number.isFinite(order) && order >= start && order <= teslaOrder + 2;
       })
     : [];
-  const safetyCounts = data
-    ? data.teams.reduce((acc, team) => {
-        const value = (team.safety_inspection || "").trim().toLowerCase();
-        if (value === "passed") acc.passed += 1;
-        else if (value === "in progress") acc.inProgress += 1;
-        else if (value.includes("additional time")) acc.additionalTime += 1;
-        else if (value) acc.other += 1;
-        else acc.pending += 1;
-        return acc;
-      }, { passed: 0, inProgress: 0, additionalTime: 0, pending: 0, other: 0 })
-    : null;
+  const missionEtaLabel = teamsAheadOfTesla == null
+    ? "—"
+    : teamsAheadOfTesla === 0
+      ? "Now / next"
+      : data?.gone_count
+        ? `${teamsAheadOfTesla} teams`
+        : "Waiting for pace";
 
   return (
     <main className="min-h-full flex-1 px-4 py-8 text-white md:px-24 md:py-16">
       <section className="mx-auto w-full max-w-5xl">
-        <div className="mb-8">
-          <span className="eyebrow">SUAS 2026 · Mission Operations</span>
-          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h1 className="!mb-2 !text-left">Flight Status</h1>
-              <p className="!mb-0 max-w-2xl text-gray-300">
-                Live competition status from RoboNation&apos;s published team status sheet.
-                This page refreshes automatically every 10 seconds.
-              </p>
-            </div>
-            <div className={"rounded-full border px-3 py-1.5 font-mono text-xs uppercase tracking-[0.16em] " + hp[1] + " " + hp[2] + " " + hp[3]}>
-              <span className={"mr-2 inline-block h-2 w-2 rounded-full " + (effectiveHealth === "live" ? "bg-emerald-300" : effectiveHealth === "delayed" ? "bg-amber-300" : effectiveHealth === "stale" ? "bg-red-300" : "bg-white/40")} />
-              {hp[0]}
-            </div>
-          </div>
-        </div>
-
         {error && (
           <div role="alert" className="mb-6 rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
             {error}
@@ -218,194 +164,118 @@ export default function StatusPage() {
           </div>
         ) : (
           <>
-            <div className="mb-7 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
-              <div className="spec-card">
-                <p className="spec-value">{Number.isFinite(currentOrder) ? "#" + currentOrder : "—"}</p>
-                <p className="spec-label">Current flight-order position</p>
-              </div>
-              <div className="spec-card">
-                <p className="spec-value">{data.gone_count}/{totalTeams}</p>
-                <p className="spec-label">Teams flown</p>
-              </div>
-              <div className="spec-card">
-                <p className="spec-value">#{data.tesla?.flight_order || "—"}</p>
-                <p className="spec-label">Our flight order</p>
-              </div>
-              <div className="spec-card">
-                <p className="spec-value">{teamsAheadOfTesla ?? "—"}</p>
-                <p className="spec-label">Teams ahead of Tesla</p>
-              </div>
-              <div className="spec-card">
-                <p className="spec-value">{relativeAge(liveAge)}</p>
-                <p className="spec-label">Last successful poll</p>
-              </div>
-              <div className="spec-card">
-                <p className="spec-value">{data.poll_interval_seconds}s</p>
-                <p className="spec-label">Refresh interval</p>
-              </div>
-            </div>
-
-            <div className="mb-9">
-              <div className="mb-2 flex items-center justify-between font-mono text-xs uppercase tracking-[0.12em] text-white/50">
-                <span>Flight progress</span>
-                <span>{Math.round(progress)}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full rounded-full bg-teal-400 transition-[width] duration-500" style={{ width: String(progress) + "%" }} />
-              </div>
-            </div>
-
-            <div className="mb-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <TeamCard
-                label={data.current_is_inferred ? "Current in flight order (inferred)" : "Current in flight order"}
-                team={data.current_team}
-                qualifier={data.current_is_inferred ? "Earliest non-final holding/ready team" : undefined}
-              />
-              <TeamCard label="Previous team flown" team={data.last_team_gone} />
-              <TeamCard label="Following in flight order" team={data.next_team} />
-            </div>
-
-            <div className="mb-10 rounded-lg border border-teal-300/25 bg-teal-300/[0.055] p-5 shadow-[0_0_30px_rgba(79,209,213,0.05)]">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="!mb-1 font-mono text-xs uppercase tracking-[0.16em] text-teal-200">Our team · TSLA</p>
-                  <p className="!m-0 text-xl font-semibold">Tesla STEM High School — SUAS@STEM</p>
-                </div>
-                <StatusBadge value={data.tesla?.flight_status || ""} />
-              </div>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
-                <div><p className="spec-label">Flight order</p><p className="!m-0 font-mono text-lg">#{data.tesla?.flight_order || "—"}</p></div>
-                <div><p className="spec-label">Teams ahead</p><p className="!m-0 font-mono text-lg">{teamsAheadOfTesla ?? "—"}</p></div>
-                <div><p className="spec-label">Safety</p><p className="!m-0 text-sm">{data.tesla?.safety_inspection || "Pending"}</p></div>
-                <div><p className="spec-label">Rapid response</p><p className="!m-0 text-sm">{data.tesla?.design_for_rapid_response || "Pending"}</p></div>
-                <div><p className="spec-label">Location</p><p className="!m-0 text-sm">{data.tesla?.location || "Not reported"}</p></div>
-                <div><p className="spec-label">Notes</p><p className="!m-0 text-sm">{data.tesla?.notes || "—"}</p></div>
-              </div>
-            </div>
-
-            <section className="mb-10" aria-labelledby="our-flight-order-heading">
+            <section className="mb-10" aria-labelledby="mission-order-heading">
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <span className="eyebrow">Flight order · our position</span>
-                  <h2 id="our-flight-order-heading" className="!mb-0 !mt-2 !text-left">Around Tesla STEM</h2>
+                  <span className="eyebrow">SUAS 2026 · Mission operations</span>
+                  <h1 id="mission-order-heading" className="!mb-0 !mt-2 !text-left">Mission Flight Order</h1>
                 </div>
-                <span className="font-mono text-xs text-white/45">Ordered exactly by official flight order</span>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <div className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-xs text-white/60">Updated {relativeAge(liveAge)}</div>
+                  <div className={"rounded-full border px-3 py-1.5 font-mono text-xs uppercase tracking-[0.16em] " + hp[1] + " " + hp[2] + " " + hp[3]}>
+                    <span className={"mr-2 inline-block h-2 w-2 rounded-full " + (effectiveHealth === "live" ? "bg-emerald-300" : effectiveHealth === "delayed" ? "bg-amber-300" : effectiveHealth === "stale" ? "bg-red-300" : "bg-white/40")} />
+                    {hp[0]}
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-1 gap-2">
-                {flightOrderWindow.map((team) => {
-                  const isTesla = team.uid === "TSLA";
-                  const isCurrent = team.uid === data.current_team?.uid;
-                  const isGone = goneUids.has(team.uid);
-                  return (
-                    <div
-                      key={team.uid}
-                      className={
-                        "grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 rounded-lg border px-4 py-3 " +
-                        (isTesla
-                          ? "border-teal-300/50 bg-teal-300/10"
-                          : isCurrent
-                            ? "border-sky-300/35 bg-sky-300/[0.07]"
-                            : "border-white/10 bg-white/[0.025]")
-                      }
-                    >
-                      <div className="font-mono text-lg font-semibold">#{team.flight_order}</div>
-                      <div className="min-w-0">
-                        <p className={(isTesla ? "text-teal-100 " : "") + "!mb-0 truncate font-semibold"}>{team.team}</p>
-                        <p className="!mb-0 font-mono text-xs text-white/45">{team.uid}{isTesla ? " · OUR TEAM" : isCurrent ? " · CURRENT / NEXT" : isGone ? " · FLOWN" : ""}</p>
-                      </div>
-                      <StatusBadge value={team.flight_status} />
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
 
-            <section className="mb-10" aria-labelledby="safety-inspection-heading">
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div className="mb-4 rounded-xl border border-teal-300/35 bg-teal-300/[0.07] p-5">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="!mb-1 font-mono text-xs uppercase tracking-[0.16em] text-teal-200">Our team · TSLA</p>
+                    <p className="!m-0 text-lg font-semibold sm:text-xl">Tesla STEM High School — SUAS@STEM</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="!mb-0 font-mono text-5xl font-bold leading-none text-teal-200">#{data.tesla?.flight_order || "—"}</p>
+                    <p className="!m-0 mt-1 text-[10px] uppercase tracking-wider text-white/45">mission order</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  <div><p className="spec-label">Teams ahead</p><p className="!m-0 font-mono text-xl font-semibold">{teamsAheadOfTesla ?? "—"}</p></div>
+                  <div><p className="spec-label">Queue ETA</p><p className="!m-0 font-mono text-sm font-semibold">{missionEtaLabel}</p></div>
+                  <div><p className="spec-label">Safety</p><p className="!m-0 text-sm font-semibold">{data.tesla?.safety_inspection || "Pending"}</p></div>
+                  <div><p className="spec-label">Rapid Response</p><p className="!m-0 text-sm font-semibold">{data.tesla?.design_for_rapid_response || "Pending"}</p></div>
+                  <div><p className="spec-label">Location</p><p className="!m-0 text-sm font-semibold">{data.tesla?.location || "Not reported"}</p></div>
+                </div>
+              </div>
+
+              <div className="mb-4 grid grid-cols-2 gap-3">
+                <div className="spec-card">
+                  <p className="spec-label">Current / next</p>
+                  <p className="!mb-1 font-mono text-2xl font-semibold">#{data.current_team?.flight_order || "—"} {data.current_team?.uid || "—"}</p>
+                  <div className="flex flex-wrap items-center gap-2"><StatusBadge value={data.current_team?.flight_status || "Pending"} /><span className="text-xs text-white/45">{data.current_team?.location || ""}</span></div>
+                </div>
+                <div className="spec-card">
+                  <p className="spec-label">Following</p>
+                  <p className="!mb-1 font-mono text-2xl font-semibold">#{data.next_team?.flight_order || "—"} {data.next_team?.uid || "—"}</p>
+                  <div className="flex flex-wrap items-center gap-2"><StatusBadge value={data.next_team?.flight_status || "Pending"} /><span className="text-xs text-white/45">{data.next_team?.location || ""}</span></div>
+                </div>
+              </div>
+
+              <div className="mb-3 flex items-end justify-between gap-3">
                 <div>
-                  <span className="eyebrow">Pre-flight gate</span>
-                  <h2 id="safety-inspection-heading" className="!mb-0 !mt-2 !text-left">Safety Inspection</h2>
+                  <span className="eyebrow">Live queue</span>
+                  <h2 className="!mb-0 !mt-2 !text-left">Current → TSLA</h2>
                 </div>
-                <StatusBadge value={data.tesla?.safety_inspection || "Pending"} />
-              </div>
-              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="spec-card"><p className="spec-value">{safetyCounts?.passed ?? 0}</p><p className="spec-label">Passed</p></div>
-                <div className="spec-card"><p className="spec-value">{safetyCounts?.inProgress ?? 0}</p><p className="spec-label">In progress</p></div>
-                <div className="spec-card"><p className="spec-value">{safetyCounts?.additionalTime ?? 0}</p><p className="spec-label">Additional time</p></div>
-                <div className="spec-card"><p className="spec-value">{safetyCounts?.pending ?? 0}</p><p className="spec-label">Pending / blank</p></div>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-white/[0.025] p-5">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <div><p className="spec-label">Tesla inspection</p><p className="!m-0 text-lg font-semibold">{data.tesla?.safety_inspection || "Pending"}</p></div>
-                  <div><p className="spec-label">Tesla location</p><p className="!m-0 text-lg font-semibold">{data.tesla?.location || "Not reported"}</p></div>
-                  <div><p className="spec-label">Teams passed</p><p className="!m-0 text-lg font-semibold">{safetyCounts?.passed ?? 0}/{totalTeams}</p></div>
-                </div>
-                <p className="!mb-0 !mt-4 text-sm text-white/55">Safety inspection is required before mission flight. This mirrors the official live sheet and never infers a pass from flight order alone.</p>
-              </div>
-            </section>
-
-            <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-lg border border-white/10 bg-white/[0.025] p-5">
-                <p className="spec-label">Data freshness</p>
-                <dl className="space-y-2 text-sm">
-                  <div className="flex justify-between gap-4"><dt className="text-white/50">Last successful poll</dt><dd className="text-right">{formatTime(data.updated_at)}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-white/50">Last status change</dt><dd className="text-right">{formatTime(data.state_changed_at)}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-white/50">Poll age</dt><dd className="text-right">{relativeAge(liveAge)}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-white/50">Page fetched</dt><dd className="text-right">{lastBrowserFetch ? formatTime(lastBrowserFetch.toISOString()) : "—"}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-white/50">Health</dt><dd className="text-right capitalize">{effectiveHealth}</dd></div>
-                </dl>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-white/[0.025] p-5">
-                <p className="spec-label">Interpretation</p>
-                <p className="!mb-2 text-sm text-white/65">
-                  A team is counted as flown once RoboNation gives it a terminal flight status such as Completed or Crashed/Collision.
-                </p>
-                <p className="!m-0 text-sm text-white/65">
-                  When no explicit active status exists, the current/next team is marked as inferred rather than presented as certain.
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-                <div>
-                  <span className="eyebrow">Flight order</span>
-                  <h2 className="!mb-0 !mt-2 !text-left">All teams</h2>
-                </div>
-                <span className="font-mono text-xs text-white/45">{totalTeams} scheduled · {data.other_teams?.length || 0} not attending/canceled</span>
+                <span className="font-mono text-xs text-white/45">{teamsAheadOfTesla ?? "—"} ahead</span>
               </div>
               <div className="overflow-x-auto rounded-xl border border-white/10">
-                <table className="!m-0 min-w-[1280px] text-sm">
-                  <thead>
-                    <tr>
-                      <th className="text-left">Order</th>
-                      <th className="text-left">UID</th>
-                      <th className="text-left">Team</th>
-                      <th className="text-left">Safety Inspection</th>
-                      <th className="text-left">Design for Rapid Response</th>
-                      <th className="text-left">Location</th>
-                      <th className="text-left">Flight Status</th>
-                      <th className="text-left">Notes</th>
-                    </tr>
-                  </thead>
+                <table className="!m-0 min-w-[610px] text-sm">
+                  <thead><tr>
+                    <th className="text-left">#</th>
+                    <th className="text-left">Code</th>
+                    <th className="text-left">Location</th>
+                    <th className="text-left">Flight</th>
+                    <th className="text-left">Safety</th>
+                    <th className="text-left">Rapid</th>
+                  </tr></thead>
+                  <tbody>
+                    {missionQueue.map((team) => {
+                      const isTesla = team.uid === "TSLA";
+                      const isCurrent = team.uid === data.current_team?.uid;
+                      const isNext = team.uid === data.next_team?.uid;
+                      return (
+                        <tr key={team.uid} className={isTesla ? "!bg-teal-300/15 outline outline-1 -outline-offset-1 outline-teal-300/50" : isCurrent ? "!bg-sky-300/[0.10]" : isNext ? "!bg-white/[0.05]" : undefined}>
+                          <td className="font-mono text-base font-semibold">#{team.flight_order}</td>
+                          <td className={(isTesla ? "text-teal-100 " : "") + "font-mono text-base font-semibold"}>{team.uid}{isTesla ? <span className="ml-1 text-[10px] text-teal-300">US</span> : null}</td>
+                          <td className="whitespace-nowrap text-xs text-white/60">{team.location || "—"}</td>
+                          <td><StatusBadge value={team.flight_status || (isCurrent ? "Current" : "Pending")} /></td>
+                          <td><StatusBadge value={team.safety_inspection || "Pending"} /></td>
+                          <td><StatusBadge value={team.design_for_rapid_response || "Pending"} /></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {data.gone_count === 0 && teamsAheadOfTesla ? <p className="!mb-0 !mt-3 text-xs text-white/45">Mission ETA will become more meaningful once completed flights establish an observed pace. Until then, teams-ahead is the reliable indicator.</p> : null}
+            </section>
+
+            <section>
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <span className="eyebrow">Full live sheet</span>
+                  <h2 className="!mb-0 !mt-2 !text-left">All teams</h2>
+                </div>
+                <span className="font-mono text-xs text-white/45">Updated {relativeAge(liveAge)} · every {data.poll_interval_seconds}s</span>
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-white/10">
+                <table className="!m-0 min-w-[920px] text-sm">
+                  <thead><tr>
+                    <th className="text-left">Order</th><th className="text-left">Code</th><th className="text-left">Location</th><th className="text-left">Flight Status</th><th className="text-left">Safety</th><th className="text-left">Rapid Response</th><th className="text-left">Notes</th>
+                  </tr></thead>
                   <tbody>
                     {allTableTeams.map((team) => {
                       const isTesla = team.uid === "TSLA";
                       const isCurrent = team.uid === data.current_team?.uid;
-                      const rowClass = isTesla
-                        ? "!bg-teal-300/15 outline outline-1 -outline-offset-1 outline-teal-300/50"
-                        : isCurrent
-                          ? "!bg-sky-300/[0.08]"
-                          : undefined;
                       return (
-                        <tr key={team.uid} className={rowClass}>
+                        <tr key={team.uid} className={isTesla ? "!bg-teal-300/15 outline outline-1 -outline-offset-1 outline-teal-300/50" : isCurrent ? "!bg-sky-300/[0.08]" : undefined}>
                           <td className="font-mono font-semibold">#{team.flight_order}</td>
-                          <td className="font-mono text-white/60">{team.uid}</td>
-                          <td className={isTesla ? "font-semibold text-teal-100" : undefined}>{team.team}</td>
-                          <td>{team.safety_inspection || "—"}</td>
-                          <td>{team.design_for_rapid_response || "—"}</td>
+                          <td className={(isTesla ? "text-teal-100 " : "") + "font-mono font-semibold"}>{team.uid}</td>
                           <td>{team.location || "—"}</td>
                           <td><StatusBadge value={team.flight_status} /></td>
+                          <td>{team.safety_inspection || "—"}</td>
+                          <td>{team.design_for_rapid_response || "—"}</td>
                           <td className="max-w-72 whitespace-normal text-white/65">{team.notes || "—"}</td>
                         </tr>
                       );
@@ -413,7 +283,8 @@ export default function StatusPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
+              <p className="!mb-0 !mt-4 font-mono text-xs text-white/40">Last successful poll: {formatTime(data.updated_at)} · {effectiveHealth}</p>
+            </section>
           </>
         )}
       </section>
