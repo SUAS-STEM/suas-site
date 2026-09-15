@@ -9,7 +9,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   try {
     const { id } = await ctx.params;
     const meta = await readJob(id);
-    if (req.nextUrl.searchParams.get("token") !== meta.token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const queryToken = req.nextUrl.searchParams.get("token");
+    const auth = req.headers.get("authorization") || "";
+    const bearerToken = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+    if (queryToken !== meta.token && bearerToken !== meta.token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await readFile(path.join(jobDir(id), "input.tar.gz"));
     return new NextResponse(body, { headers: { "Content-Type": "application/gzip", "Content-Disposition": `attachment; filename="stitch-${id}.tar.gz"`, "Cache-Control": "private, no-store" } });
   } catch {
