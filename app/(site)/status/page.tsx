@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Team = {
   flight_order: string;
@@ -90,6 +90,7 @@ export default function StatusPage() {
   const [data, setData] = useState<StatusData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, tick] = useState(0);
+  const lastStreamEventAt = useRef(0);
 
   const refresh = useCallback(async () => {
     try {
@@ -110,6 +111,7 @@ export default function StatusPage() {
     stream.onmessage = (event) => {
       try {
         const next = JSON.parse(event.data) as StatusData;
+        lastStreamEventAt.current = Date.now();
         setData(next);
         setError(null);
       } catch (err) {
@@ -117,7 +119,8 @@ export default function StatusPage() {
       }
     };
     const poll = window.setInterval(() => {
-      if (stream.readyState !== EventSource.OPEN) void refresh();
+      const streamSilent = Date.now() - lastStreamEventAt.current > 2_500;
+      if (stream.readyState !== EventSource.OPEN || streamSilent) void refresh();
     }, FALLBACK_POLL_MS);
     const clock = window.setInterval(() => tick((n) => n + 1), 1000);
     return () => {
