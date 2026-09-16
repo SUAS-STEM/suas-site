@@ -49,6 +49,10 @@ export default function UploadPortal() {
     try {
       const response = await fetch("/api/upload-auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: mode, name, passcode }) });
       const result = await response.json();
+      if (result.pending) {
+        setMode("login"); setPasscode(""); setMessage(result.message || result.error || "Your request is waiting for admin approval.");
+        return;
+      }
       if (!response.ok) throw new Error(result.error || "Could not sign in");
       const requestedPath = new URLSearchParams(window.location.search).get("redirect");
       const safeRedirect = requestedPath && requestedPath.startsWith("/") && !requestedPath.startsWith("//") ? requestedPath : null;
@@ -107,13 +111,13 @@ export default function UploadPortal() {
               <button type="button" onClick={() => setMode("register")} className={`border-b-2 px-3 pb-3 text-sm font-semibold ${mode === "register" ? "border-teal-200 text-white" : "border-transparent text-white/40"}`}>Request a login</button>
               <button type="button" onClick={() => setMode("login")} className={`border-b-2 px-3 pb-3 text-sm font-semibold ${mode === "login" ? "border-teal-200 text-white" : "border-transparent text-white/40"}`}>Sign in</button>
             </div>
-            <h2 className="!mb-2 !mt-1 !text-left">{mode === "register" ? "Create your upload login" : "Welcome back"}</h2>
-            <p className="mb-5 max-w-lg text-sm text-white/50">{mode === "register" ? "Choose a name and a passcode you will remember. Your login opens the full dev site immediately." : "Use the name and passcode you created for the dev site."}</p>
+            <h2 className="!mb-2 !mt-1 !text-left">{mode === "register" ? "Request dev access" : "Welcome back"}</h2>
+            <p className="mb-5 max-w-lg text-sm text-white/50">{mode === "register" ? "Choose a name and a passcode you will remember. An admin must approve your request before you can enter the dev site." : "Use the name and passcode you requested for the dev site."}</p>
             <form onSubmit={(event) => void submitAuth(event)} className="max-w-md space-y-4">
               <label className="block text-sm text-white/60">Your name<input value={name} onChange={(event) => setName(event.target.value)} required minLength={2} maxLength={80} autoComplete="name" className="mt-1.5 block w-full rounded-lg border border-white/15 bg-black/25 px-3.5 py-3 text-white outline-none transition focus:border-teal-200/60" placeholder="Alex Chen" /></label>
               <label className="block text-sm text-white/60">{mode === "register" ? "Create a passcode" : "Passcode"}<input type="password" value={passcode} onChange={(event) => setPasscode(event.target.value)} required minLength={6} maxLength={128} autoComplete={mode === "register" ? "new-password" : "current-password"} className="mt-1.5 block w-full rounded-lg border border-white/15 bg-black/25 px-3.5 py-3 text-white outline-none transition focus:border-teal-200/60" placeholder="At least 6 characters" /></label>
               {error && <p className="!m-0 text-sm text-red-300">{error}</p>}
-              <button disabled={busy} className="rounded-lg border border-teal-300/30 bg-teal-300 px-4 py-3 text-sm font-bold text-black transition hover:bg-teal-200 disabled:opacity-50">{busy ? "Working…" : mode === "register" ? "Create login" : "Sign in"}</button>
+              <button disabled={busy} className="rounded-lg border border-teal-300/30 bg-teal-300 px-4 py-3 text-sm font-bold text-black transition hover:bg-teal-200 disabled:opacity-50">{busy ? "Working…" : mode === "register" ? "Request access" : "Sign in"}</button>
             </form>
           </div>
         ) : (

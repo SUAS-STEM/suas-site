@@ -11,7 +11,8 @@ const DB_PATH = process.env.UPLOAD_AUTH_DB ||
     ? "/home/pi/suas-site-dev/data/upload-users.db"
     : path.join(process.cwd(), "data", "upload-users.db"));
 
-type User = { id: string; name: string };
+export type User = { id: string; name: string };
+export type UploadRequest = { id: string; name: string; requestedAt: string };
 
 function openDb() {
   const db = new Database(DB_PATH);
@@ -23,9 +24,14 @@ function openDb() {
       normalized_name TEXT NOT NULL UNIQUE,
       passcode_hash TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      last_login_at TEXT
+      last_login_at TEXT,
+      status TEXT NOT NULL DEFAULT 'approved',
+      reviewed_at TEXT
     )
   `);
+  const columns = db.prepare("PRAGMA table_info(upload_users)").all() as Array<{ name: string }>;
+  if (!columns.some((column) => column.name === "status")) db.exec("ALTER TABLE upload_users ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'");
+  if (!columns.some((column) => column.name === "reviewed_at")) db.exec("ALTER TABLE upload_users ADD COLUMN reviewed_at TEXT");
   return db;
 }
 
@@ -67,7 +73,7 @@ function userFromToken(token: string | undefined): User | null {
 
   const db = openDb();
   try {
-    return (db.prepare("SELECT id, name FROM upload_users WHERE id = ?").get(userId) as User | undefined) || null;
+    return (db.prepare("SELECT id, name FROM upload_users WHERE id = ? AND status = 'approved'").get(userId) as User | undefined) || null;
   } finally {
     db.close();
   }
@@ -82,17 +88,17 @@ export function publicUser(user: User) {
   return { id: user.id, name: user.name };
 }
 
-export function registerUploadUser(nameInput: string, passcode: string) {
+export function registerUploadUser(nameInput: string, passcode: string): UploadRequest {
   const name = nameInput.trim();
   if (name.length < 2 || name.length > 80) throw new Error("Name must be between 2 and 80 characters");
   if (passcode.length < 6 || passcode.length > 128) throw new Error("Passcode must be between 6 and 128 characters");
 
   const db = openDb();
   try {
-    const user: User = { id: randomUUID(), name };
-    db.prepare(`INSERT INTO upload_users (id, name, normalized_name, passcode_hash, created_at) VALUES (?, ?, ?, ?, ?)`)
-      .run(user.id, user.name, name.toLowerCase(), passcodeHash(passcode), new Date().toISOString());
-    return user;
+    const request: UploadRequest = { id: randomUUID(), name, requestedAt: new Date().toISOString() };
+    db.prepare(`INSERT INTO upload_users (id, name, normalized_name, passcode_hash, created_at, status) VALUES (?, ?, ?, ?, ?, 'pending')`)
+      .run(request.id, request.name, name.toLowerCase(), passcodeHash(passcode), request.requestedAt);
+    return request;
   } finally {
     db.close();
   }
@@ -102,10 +108,33 @@ export function loginUploadUser(nameInput: string, passcode: string) {
   const name = nameInput.trim();
   const db = openDb();
   try {
-    const row = db.prepare("SELECT id, name, passcode_hash FROM upload_users WHERE normalized_name = ?").get(name.toLowerCase()) as (User & { passcode_hash: string }) | undefined;
+    const row = db.prepare("SELECT id, name, passcode_hash, status FROM upload_users WHERE normalized_name = ?").get(name.toLowerCase()) as (User & { passcode_hash: string; status: string }) | undefined;
     if (!row || !matchesPasscode(passcode, row.passcode_hash)) return null;
+    if (row.status !== "approved") return { pending: true as const };
     db.prepare("UPDATE upload_users SET last_login_at = ? WHERE id = ?").run(new Date().toISOString(), row.id);
     return { id: row.id, name: row.name };
+  } finally {
+    db.close();
+  }
+}
+
+export function listPendingUploadRequests(): UploadRequest[] {
+  const db = openDb();
+  try {
+    const rows = db.prepare("SELECT id, name, created_at FROM upload_users WHERE status = 'pending' ORDER BY created_at ASC").all() as Array<{ id: string; name: string; created_at: string }>;
+    return rows.map((row) => ({ id: row.id, name: row.name, requestedAt: row.created_at }));
+  } finally {
+    db.close();
+  }
+}
+
+export function reviewUploadRequest(id: string, action: "approve" | "deny") {
+  const db = openDb();
+  try {
+    if (action === "approve") {
+      return db.prepare("UPDATE upload_users SET status = 'approved', reviewed_at = ? WHERE id = ? AND status = 'pending'").run(new Date().toISOString(), id).changes > 0;
+    }
+    return db.prepare("DELETE FROM upload_users WHERE id = ? AND status = 'pending'").run(id).changes > 0;
   } finally {
     db.close();
   }

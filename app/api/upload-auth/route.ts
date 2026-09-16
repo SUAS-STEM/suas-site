@@ -34,12 +34,14 @@ export async function POST(req: NextRequest) {
       ? registerUploadUser(String(body?.name || ""), String(body?.passcode || ""))
       : loginUploadUser(String(body?.name || ""), String(body?.passcode || ""));
     if (!user) return NextResponse.json({ error: "Name or passcode not recognized" }, { status: 401 });
+    if ("pending" in user) return NextResponse.json({ pending: true, error: "Your request is waiting for admin approval." }, { status: 403 });
+    if (action === "register") return NextResponse.json({ ok: true, pending: true, message: "Request sent. An admin must approve it before you can sign in." }, { status: 202 });
     const response = NextResponse.json({ ok: true, user: publicUser(user) });
     setUploadSession(response, user.id);
     return response;
   } catch (cause) {
     if (cause instanceof Error && cause.message.includes("UNIQUE constraint failed")) {
-      return NextResponse.json({ error: "That name already has a login. Use Sign in instead." }, { status: 409 });
+      return NextResponse.json({ error: "That name already has a request. Use Sign in to check its status." }, { status: 409 });
     }
     return NextResponse.json({ error: cause instanceof Error ? cause.message : "Could not create login" }, { status: 400 });
   }

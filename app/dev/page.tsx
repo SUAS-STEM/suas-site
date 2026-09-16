@@ -4,8 +4,9 @@ import SsgcsTab from "./tabs/SsgcsTab";
 import WikiTab from "./tabs/WikiTab";
 import LinksTab from "./tabs/LinksTab";
 import UploadsTab from "./tabs/UploadsTab";
+import UploadRequestsTab from "./tabs/UploadRequestsTab";
 
-const TABS = ["SSGCS", "Wiki", "Links", "Uploads"] as const;
+const TABS = ["SSGCS", "Wiki", "Links", "Uploads", "Login requests"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function DevPage() {
@@ -49,6 +50,7 @@ export default function DevPage() {
         {tab === "Wiki" && <WikiTab />}
         {tab === "Links" && <LinksTab />}
         {tab === "Uploads" && <UploadsTab />}
+        {tab === "Login requests" && <UploadRequestsTab />}
       </div>
     </main>
   );
