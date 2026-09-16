@@ -8,6 +8,7 @@
     "prebuild": "npm run fetch:internal && npm run gallery:manifest",
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "rm -rf .next/standalone/public .next/standalone/.next/static && cp -r public .next/standalone/public && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/static",
     "start": "next start",
     "lint": "eslint",
     "gallery:manifest": "node scripts/generate-gallery-manifest.mjs"
