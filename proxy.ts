@@ -3,7 +3,7 @@ import { requestOrigin } from "@/lib/requestOrigin";
 
 const DEV_HOST = "dev.suasstem.org";
 const COOKIE = "dev_auth";
-const PROTECTED_PREFIXES = ["/dev", "/api/wiki", "/api/links"];
+const PROTECTED_PREFIXES = ["/dev", "/api/wiki", "/api/links", "/api/dev-files"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));

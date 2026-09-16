@@ -3,8 +3,9 @@ import { useState } from "react";
 import SsgcsTab from "./tabs/SsgcsTab";
 import WikiTab from "./tabs/WikiTab";
 import LinksTab from "./tabs/LinksTab";
+import UploadsTab from "./tabs/UploadsTab";
 
-const TABS = ["SSGCS", "Wiki", "Links"] as const;
+const TABS = ["SSGCS", "Wiki", "Links", "Uploads"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function DevPage() {
@@ -47,6 +48,7 @@ export default function DevPage() {
         {tab === "SSGCS" && <SsgcsTab />}
         {tab === "Wiki" && <WikiTab />}
         {tab === "Links" && <LinksTab />}
+        {tab === "Uploads" && <UploadsTab />}
       </div>
     </main>
   );
