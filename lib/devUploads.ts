@@ -28,12 +28,17 @@ export function storedFileName(originalName: string) {
   return `${crypto.randomUUID()}__${cleanOriginalName(originalName)}`;
 }
 
+export function userStoredFileName(userId: string, originalName: string) {
+  return `${userId}__${crypto.randomUUID()}__${cleanOriginalName(originalName)}`;
+}
+
 export function isStoredFileName(name: string) {
-  return path.basename(name) === name && /^[0-9a-f-]{36}__[^/\\\r\n]+$/i.test(name);
+  return path.basename(name) === name && /^(?:[0-9a-f-]{36}__){1,2}[^/\\\r\n]+$/i.test(name);
 }
 
 export function originalNameFromStored(name: string) {
-  return name.slice(38);
+  const parts = name.split("__");
+  return parts.length >= 3 ? parts.slice(2).join("__") : name.slice(38);
 }
 
 export function mimeTypeForName(name: string) {
