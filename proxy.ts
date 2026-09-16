@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isValidUploadSession } from "@/lib/devHost";
 import { requestOrigin } from "@/lib/requestOrigin";
 
 const DEV_HOST = "dev.suasstem.org";
@@ -68,7 +69,8 @@ export async function proxy(req: NextRequest) {
 
   const token = req.cookies.get(COOKIE)?.value;
   const expected = await makeToken(password);
-  if (token === expected) return NextResponse.next();
+  const uploadSession = await isValidUploadSession(req.cookies.get("upload_auth")?.value, process.env.UPLOAD_AUTH_SECRET || password);
+  if (token === expected || uploadSession) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
     return new NextResponse("Unauthorized", { status: 401 });

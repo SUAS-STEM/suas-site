@@ -2,6 +2,7 @@ import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promi
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { isStitchAdmin } from "@/lib/stitchAuth";
+import { currentUploadUser } from "@/lib/uploadAuth";
 import {
   DEV_UPLOAD_DIR,
   isStoredFileName,
@@ -45,7 +46,7 @@ async function listFiles(): Promise<ListedFile[]> {
 }
 
 async function requireAdmin() {
-  return isStitchAdmin();
+  return (await isStitchAdmin()) || Boolean(await currentUploadUser());
 }
 
 export async function GET(req: NextRequest) {
