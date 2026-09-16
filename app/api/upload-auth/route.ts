@@ -6,17 +6,20 @@ import {
   publicUser,
   registerUploadUser,
   setUploadSession,
+  isDevSiteHost,
 } from "@/lib/uploadAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!isDevSiteHost(req.headers.get("host"))) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const user = await currentUploadUser();
   return NextResponse.json({ user: user ? publicUser(user) : null }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(req: NextRequest) {
+  if (!isDevSiteHost(req.headers.get("host"))) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = await req.json().catch(() => ({}));
   const action = body?.action;
   if (action === "logout") {

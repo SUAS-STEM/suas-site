@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 function LoginForm() {
   const params = useSearchParams();
@@ -60,6 +61,10 @@ function LoginForm() {
             Enter
           </button>
         </form>
+
+        <p className="mt-5 text-center text-xs text-white/40">
+          Need to upload files? <Link href="/upload" className="text-teal-200 underline hover:text-teal-100">Request an upload login</Link>
+        </p>
       </div>
     </main>
   );

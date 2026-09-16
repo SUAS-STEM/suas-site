@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promi
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { DEV_UPLOAD_DIR, cleanOriginalName, isStoredFileName, MAX_UPLOAD_FILES, MAX_UPLOAD_FILE_BYTES, MAX_UPLOAD_REQUEST_BYTES, mimeTypeForName, originalNameFromStored, userStoredFileName } from "@/lib/devUploads";
-import { currentUploadUser } from "@/lib/uploadAuth";
+import { currentUploadUser, isDevSiteHost } from "@/lib/uploadAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +26,7 @@ async function listUserFiles(userId: string): Promise<ListedFile[]> {
 }
 
 export async function GET(req: NextRequest) {
+  if (!isDevSiteHost(req.headers.get("host"))) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const user = await currentUploadUser();
   if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
   const name = req.nextUrl.searchParams.get("name");
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isDevSiteHost(req.headers.get("host"))) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const user = await currentUploadUser();
   if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
   const form = await req.formData();
@@ -63,6 +65,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  if (!isDevSiteHost(req.headers.get("host"))) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const user = await currentUploadUser();
   if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
   const name = req.nextUrl.searchParams.get("name");

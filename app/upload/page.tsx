@@ -1,7 +1,11 @@
 import UploadPortal from "./UploadPortal";
+import { headers } from "next/headers";
+import { notFound } from "next/navigation";
+import { isDevSiteHost } from "@/lib/uploadAuth";
 
 export const metadata = { title: "Upload files · SUAS@STEM" };
 
-export default function UploadPage() {
+export default async function UploadPage() {
+  if (!isDevSiteHost((await headers()).get("host"))) notFound();
   return <UploadPortal />;
 }
