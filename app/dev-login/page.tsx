@@ -63,7 +63,7 @@ function LoginForm() {
         </form>
 
         <p className="mt-5 text-center text-xs text-white/40">
-          Need to upload files? <Link href="/upload" className="text-teal-200 underline hover:text-teal-100">Request an upload login</Link>
+          Need a personal dev login? <Link href="/upload" className="text-teal-200 underline hover:text-teal-100">Request one here</Link>
         </p>
       </div>
     </main>

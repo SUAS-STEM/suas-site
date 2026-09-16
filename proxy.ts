@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isValidUploadSession } from "@/lib/devHost";
+import { isDevSiteHost, isValidUploadSession } from "@/lib/devHost";
 import { requestOrigin } from "@/lib/requestOrigin";
 
 const DEV_HOST = "dev.suasstem.org";
@@ -27,6 +27,7 @@ export async function proxy(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
   const password = process.env.PASSWORD;
   const host = req.headers.get("host")?.replace(/:\d+$/, "") ?? "";
+  const isDevHost = isDevSiteHost(host);
   // next.config.ts rewrites "/" -> "/dev" for this host, but that rewrite
   // happens after middleware, so this proxy sees the original "/" and must
   // treat it as protected explicitly.
@@ -59,7 +60,10 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!isProtected(pathname) && !isDevHostRoot) return NextResponse.next();
+  const isUploadRoute = pathname === "/upload" || pathname.startsWith("/upload/");
+  const isUploadApi = pathname === "/api/upload-auth" || pathname.startsWith("/api/upload-auth/") || pathname === "/api/user-files" || pathname.startsWith("/api/user-files/");
+  const needsDevHostAuth = isDevHost && !isUploadRoute && !isUploadApi;
+  if (!isProtected(pathname) && !needsDevHostAuth && !isDevHostRoot) return NextResponse.next();
 
   // Fail closed: without a configured password, protected routes are blocked
   // rather than silently served, so a missing env var can't leak internal content.
