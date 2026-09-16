@@ -76,7 +76,7 @@ export async function proxy(req: NextRequest) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const loginUrl = new URL("/dev-login", requestOrigin(req));
+  const loginUrl = new URL("/upload", requestOrigin(req));
   loginUrl.searchParams.set("redirect", isDevHostRoot ? "/" : pathname);
   return NextResponse.redirect(loginUrl);
 }

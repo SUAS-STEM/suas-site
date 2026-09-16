@@ -50,6 +50,12 @@ export default function UploadPortal() {
       const response = await fetch("/api/upload-auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: mode, name, passcode }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not sign in");
+      const requestedPath = new URLSearchParams(window.location.search).get("redirect");
+      const safeRedirect = requestedPath && requestedPath.startsWith("/") && !requestedPath.startsWith("//") ? requestedPath : null;
+      if (safeRedirect) {
+        window.location.assign(safeRedirect);
+        return;
+      }
       setUser(result.user); setPasscode(""); setMessage(mode === "register" ? "Login created. You can upload now." : "Signed in.");
       await refreshFiles();
     } catch (cause) {
