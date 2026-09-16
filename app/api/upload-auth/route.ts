@@ -6,8 +6,8 @@ import {
   publicUser,
   registerUploadUser,
   setUploadSession,
-  isDevSiteHost,
 } from "@/lib/uploadAuth";
+import { isDevSiteHost } from "@/lib/devHost";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

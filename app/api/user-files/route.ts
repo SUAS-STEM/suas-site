@@ -2,7 +2,8 @@ import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promi
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { DEV_UPLOAD_DIR, cleanOriginalName, isStoredFileName, MAX_UPLOAD_FILES, MAX_UPLOAD_FILE_BYTES, MAX_UPLOAD_REQUEST_BYTES, mimeTypeForName, originalNameFromStored, userStoredFileName } from "@/lib/devUploads";
-import { currentUploadUser, isDevSiteHost } from "@/lib/uploadAuth";
+import { currentUploadUser } from "@/lib/uploadAuth";
+import { isDevSiteHost } from "@/lib/devHost";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

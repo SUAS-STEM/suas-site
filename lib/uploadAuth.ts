@@ -13,11 +13,6 @@ const DB_PATH = process.env.UPLOAD_AUTH_DB ||
 
 type User = { id: string; name: string };
 
-export function isDevSiteHost(host: string | null) {
-  const normalized = (host || "").replace(/:\d+$/, "").toLowerCase();
-  return normalized === "dev.suasstem.org" || normalized === "localhost" || normalized === "127.0.0.1";
-}
-
 function openDb() {
   const db = new Database(DB_PATH);
   db.pragma("journal_mode = WAL");
