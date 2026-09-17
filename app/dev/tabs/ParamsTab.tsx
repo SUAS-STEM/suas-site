@@ -180,23 +180,28 @@ function RichTextEditor({ label, value, onChange, compact = false }: { label: st
     if (editor.current) onChange(htmlToMarkdown(editor.current.innerHTML).slice(0, 5000));
   }
 
-  function command(name: string, argument?: string) {
+  function command(name: string, argument?: string, requiresSelection = false) {
+    const selection = window.getSelection();
+    const hasSelection = Boolean(selection && editor.current && editor.current.contains(selection.anchorNode) && !selection.isCollapsed);
+    if (requiresSelection && !hasSelection) return;
     editor.current?.focus();
     document.execCommand(name, false, argument);
     updateValue();
   }
 
   function addLink() {
+    const selection = window.getSelection();
+    if (!selection || !editor.current?.contains(selection.anchorNode) || selection.isCollapsed) return;
     const url = window.prompt("Paste a web address");
     if (!url || !/^https?:\/\//i.test(url)) return;
-    command("createLink", url);
+    command("createLink", url, true);
   }
 
-  return <label className="block text-xs text-white/50">{label}<div className="mt-1.5 overflow-hidden rounded border border-white/15 bg-white/[0.03]"><div className="flex items-center gap-0.5 border-b border-white/10 p-1"><RichTextButton icon="format_bold" label="Bold" onClick={() => command("bold")} /><RichTextButton icon="format_italic" label="Italic" onClick={() => command("italic")} /><RichTextButton icon="format_list_bulleted" label="Bulleted list" onClick={() => command("insertUnorderedList")} /><RichTextButton icon="format_list_numbered" label="Numbered list" onClick={() => command("insertOrderedList")} /><RichTextButton icon="link" label="Add link" onClick={addLink} /></div><div ref={editor} contentEditable suppressContentEditableWarning role="textbox" aria-label={label} aria-multiline="true" onInput={updateValue} data-placeholder="What changed, aircraft, or test conditions…" className={`rich-note-editor block w-full overflow-y-auto bg-transparent px-3 py-2 text-sm text-white outline-none empty:before:pointer-events-none empty:before:text-white/25 empty:before:content-[attr(data-placeholder)] ${compact ? "min-h-12 max-h-28" : "min-h-32 max-h-60"}`} /></div></label>;
+  return <div className="block text-xs text-white/50"><span>{label}</span><div className="mt-1.5 overflow-hidden rounded border border-white/15 bg-white/[0.03]"><div className="flex items-center gap-0.5 border-b border-white/10 p-1"><RichTextButton icon="format_bold" label="Bold selected text" onClick={() => command("bold", undefined, true)} /><RichTextButton icon="format_italic" label="Italicize selected text" onClick={() => command("italic", undefined, true)} /><RichTextButton icon="format_list_bulleted" label="Bulleted list" onClick={() => command("insertUnorderedList")} /><RichTextButton icon="format_list_numbered" label="Numbered list" onClick={() => command("insertOrderedList")} /><RichTextButton icon="link" label="Link selected text" onClick={addLink} /></div><div ref={editor} contentEditable suppressContentEditableWarning role="textbox" aria-label={label} aria-multiline="true" onInput={updateValue} data-placeholder="What changed, aircraft, or test conditions…" className={`rich-note-editor block w-full overflow-y-auto bg-transparent px-3 py-2 text-sm text-white outline-none empty:before:pointer-events-none empty:before:text-white/25 empty:before:content-[attr(data-placeholder)] ${compact ? "min-h-12 max-h-28" : "min-h-32 max-h-60"}`} /></div></div>;
 }
 
 function RichTextButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
-  return <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={onClick} className="rounded p-1.5 text-white/50 hover:bg-white/10 hover:text-white" title={label} aria-label={label}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">{icon}</span></button>;
+  return <button type="button" onMouseDown={(event) => { event.preventDefault(); onClick(); }} className="rounded p-1.5 text-white/50 hover:bg-white/10 hover:text-white" title={label} aria-label={label}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">{icon}</span></button>;
 }
 
 function escapeHtml(value: string) {
