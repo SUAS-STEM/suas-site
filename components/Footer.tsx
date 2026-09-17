@@ -63,12 +63,6 @@ export default function Footer(): React.ReactElement {
             >
               YouTube
             </a>
-            <a
-              href="https://dev.suasstem.org"
-              className="text-xs text-white/30 hover:text-white/60 transition font-mono"
-            >
-              dev
-            </a>
           </div>
 
           {/* <div className="flex gap-4 items-center">
