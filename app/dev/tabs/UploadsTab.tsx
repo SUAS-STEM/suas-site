@@ -19,7 +19,7 @@ type UploadedFile = {
 };
 
 type StorageStatus = {
-  cloud: { configured: boolean; provider: "TeraBox"; used: number | null; limit: number | null; remaining: number | null; message: string | null };
+  cloud: { configured: boolean; provider: string; used: number | null; limit: number | null; remaining: number | null; message: string | null };
 };
 
 const CATEGORIES: Array<{ id: UploadCategory; label: string }> = [
@@ -191,7 +191,7 @@ export default function UploadsTab() {
               <input id="dev-file-upload" className="sr-only" type="file" multiple disabled={busy} onChange={(event) => { void upload(event.target.files ?? []); event.currentTarget.value = ""; }} />
               <span className="material-symbols-outlined block text-2xl text-teal-200" aria-hidden="true">upload_file</span>
               <span className="mt-2 block text-sm font-medium text-white">Add to {CATEGORIES.find((item) => item.id === category)?.label}</span>
-              <span className="mt-1 block text-xs text-white/45">Drop files here or click to browse · streamed directly to TeraBox</span>
+              <span className="mt-1 block text-xs text-white/45">Drop files here or click to browse · streamed directly to {storage?.cloud.provider || "cloud storage"}</span>
             </label>
           </div>
         </div>
@@ -215,12 +215,12 @@ export default function UploadsTab() {
             </button>
           ))}
           {visibleFiles.filter((file) => !file.type.startsWith("image/")).map((file) => (
-            <FileRow key={file.name} file={file} onDelete={removeFile} />
+            <FileRow key={file.name} file={file} onDelete={removeFile} provider={storage?.cloud.provider || "cloud storage"} />
           ))}
         </div>
       ) : (
         <div className="divide-y divide-white/10 border-y border-white/10">
-          {visibleFiles.map((file) => <FileRow key={file.name} file={file} onDelete={removeFile} />)}
+          {visibleFiles.map((file) => <FileRow key={file.name} file={file} onDelete={removeFile} provider={storage?.cloud.provider || "cloud storage"} />)}
         </div>
       )}
 
@@ -245,7 +245,7 @@ export default function UploadsTab() {
   );
 }
 
-function FileRow({ file, onDelete }: { file: UploadedFile; onDelete: (file: UploadedFile) => Promise<void> }) {
+function FileRow({ file, onDelete, provider }: { file: UploadedFile; onDelete: (file: UploadedFile) => Promise<void>; provider: string }) {
   const image = file.type.startsWith("image/");
   const url = fileUrl(file);
   return (
@@ -255,7 +255,7 @@ function FileRow({ file, onDelete }: { file: UploadedFile; onDelete: (file: Uplo
         <p className="truncate text-sm text-white" title={file.originalName}>{file.originalName}</p>
         <p className="mt-1 text-xs text-white/35">{formatBytes(file.size)} · uploaded by {file.uploaderName} · {new Date(file.uploadedAt).toLocaleDateString()}</p>
       </div>
-      <span className={`shrink-0 text-[11px] ${file.cloudStatus === "uploaded" ? "text-teal-200" : file.cloudStatus === "failed" ? "text-red-200" : "text-white/35"}`} title={file.cloudError || undefined}>{file.cloudStatus === "uploaded" ? "TeraBox" : file.cloudStatus === "pending" ? "Syncing" : file.cloudStatus === "failed" ? "Sync failed" : "Local"}</span>
+      <span className={`shrink-0 text-[11px] ${file.cloudStatus === "uploaded" ? "text-teal-200" : file.cloudStatus === "failed" ? "text-red-200" : "text-white/35"}`} title={file.cloudError || undefined}>{file.cloudStatus === "uploaded" ? provider : file.cloudStatus === "pending" ? "Syncing" : file.cloudStatus === "failed" ? "Sync failed" : "Local"}</span>
       {image && <a href={url} target="_blank" rel="noreferrer" className="text-xs text-teal-200 hover:text-white">View</a>}
       <a href={url} className="text-xs text-white/45 hover:text-white">Download</a>
       <button type="button" onClick={() => void onDelete(file)} className="text-xs text-white/35 hover:text-red-200">Delete</button>
@@ -267,7 +267,7 @@ function StorageStatusView({ storage }: { storage: StorageStatus }) {
   const cloudPercent = storage.cloud.limit && storage.cloud.used != null ? Math.min(100, storage.cloud.used / storage.cloud.limit * 100) : null;
   return (
     <div className="grid gap-3 md:grid-cols-2" aria-label="Storage status">
-      <QuotaCard label="TeraBox cloud" used={storage.cloud.used} limit={storage.cloud.limit} remaining={storage.cloud.remaining} percent={cloudPercent} message={storage.cloud.message || undefined} />
+      <QuotaCard label={`${storage.cloud.provider} cloud`} used={storage.cloud.used} limit={storage.cloud.limit} remaining={storage.cloud.remaining} percent={cloudPercent} message={storage.cloud.message || undefined} />
     </div>
   );
 }

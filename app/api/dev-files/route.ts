@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { currentDevIdentity, isDevAuthorized } from "@/lib/devAdminAuth";
-import { deleteFileFromCloud, getStorageStatus, streamFileFromCloud, syncStreamToCloud } from "@/lib/cloudStorage";
+import { cloudProviderName, deleteFileFromCloud, getStorageStatus, streamFileFromCloud, syncStreamToCloud } from "@/lib/cloudStorage";
 import { deleteFileRecord, getFileRecord, listFileRecords, saveFileRecord, updateCloudStatus, type FileRecord } from "@/lib/fileRecords";
 import {
   cleanOriginalName,
@@ -44,9 +44,9 @@ export async function GET(req: NextRequest) {
     if (categoryParam && !isUploadCategory(categoryParam)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
     const record = getFileRecord(name);
     if (!record || (categoryParam && record.category !== categoryParam)) return NextResponse.json({ error: "File not found" }, { status: 404 });
-    if (record.cloudStatus !== "uploaded") return NextResponse.json({ error: "File is not available in TeraBox yet." }, { status: 404 });
+    if (record.cloudStatus !== "uploaded") return NextResponse.json({ error: `File is not available in ${cloudProviderName()} yet.` }, { status: 404 });
     const remote = streamFileFromCloud(record);
-    if (!remote) return NextResponse.json({ error: "TeraBox is not configured" }, { status: 503 });
+    if (!remote) return NextResponse.json({ error: `${cloudProviderName()} is not configured` }, { status: 503 });
     const body = Readable.toWeb(remote.remoteStream) as unknown as ReadableStream;
     return new NextResponse(body, { headers: responseHeaders(record, record.type.startsWith("image/"), record.size) });
   }
@@ -58,8 +58,8 @@ export async function POST(req: NextRequest) {
   const contentLength = Number(req.headers.get("content-length") || 0);
   if (contentLength > MAX_UPLOAD_REQUEST_BYTES + 1024 * 1024) return NextResponse.json({ error: "This upload exceeds the total upload limit" }, { status: 413 });
   const storage = await getStorageStatus();
-  if (!storage.cloud.configured) return NextResponse.json({ error: storage.cloud.message || "TeraBox is not configured. No local fallback is available." }, { status: 503 });
-  if (storage.cloud.remaining == null) return NextResponse.json({ error: "Configure the TeraBox quota before uploading." }, { status: 503 });
+  if (!storage.cloud.configured) return NextResponse.json({ error: storage.cloud.message || `${cloudProviderName()} is not configured. No local fallback is available.` }, { status: 503 });
+  if (storage.cloud.remaining == null) return NextResponse.json({ error: `Configure the ${cloudProviderName()} quota before uploading.` }, { status: 503 });
 
   const form = await req.formData();
   const categoryValue = form.get("category");
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   if (totalBytes > MAX_UPLOAD_REQUEST_BYTES) return NextResponse.json({ error: "This upload exceeds the total upload limit" }, { status: 413 });
   const tooLarge = files.find((file) => file.size > MAX_UPLOAD_FILE_BYTES);
   if (tooLarge) return NextResponse.json({ error: `${tooLarge.name} is larger than the per-file limit` }, { status: 413 });
-  if (totalBytes > storage.cloud.remaining) return NextResponse.json({ error: "The TeraBox quota does not have enough room for this upload." }, { status: 413 });
+  if (totalBytes > storage.cloud.remaining) return NextResponse.json({ error: `The ${cloudProviderName()} quota does not have enough room for this upload.` }, { status: 413 });
 
   const identity = await currentDevIdentity();
   const uploaded: ListedFile[] = [];
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     const saved = getFileRecord(name) || { ...record, cloudStatus: result, cloudError: result === "failed" ? "Upload failed." : null };
     uploaded.push({ ...saved, localAvailable: false });
     if (result !== "uploaded") {
-      return NextResponse.json({ ok: false, files: uploaded, storage: await getStorageStatus(), error: `Could not upload ${file.name} to TeraBox.` }, { status: 502 });
+      return NextResponse.json({ ok: false, files: uploaded, storage: await getStorageStatus(), error: `Could not upload ${file.name} to ${cloudProviderName()}.` }, { status: 502 });
     }
   }
   return NextResponse.json({ ok: true, files: uploaded, storage: await getStorageStatus() });
@@ -110,8 +110,8 @@ export async function DELETE(req: NextRequest) {
   if (categoryParam && !isUploadCategory(categoryParam)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
   const record = getFileRecord(name);
   if (!record || (categoryParam && record.category !== categoryParam)) return NextResponse.json({ error: "File not found" }, { status: 404 });
-  if (record.cloudStatus === "pending") return NextResponse.json({ error: "This file is still uploading to TeraBox. Try again when it finishes." }, { status: 409 });
-  if (record.cloudStatus === "uploaded" && !(await deleteFileFromCloud(record))) return NextResponse.json({ error: "Could not delete the TeraBox copy." }, { status: 502 });
+  if (record.cloudStatus === "pending") return NextResponse.json({ error: `This file is still uploading to ${cloudProviderName()}. Try again when it finishes.` }, { status: 409 });
+  if (record.cloudStatus === "uploaded" && !(await deleteFileFromCloud(record))) return NextResponse.json({ error: `Could not delete the ${cloudProviderName()} copy.` }, { status: 502 });
   deleteFileRecord(record.name);
   updateCloudStatus(record.name, "local");
   return NextResponse.json({ ok: true, storage: await getStorageStatus() });

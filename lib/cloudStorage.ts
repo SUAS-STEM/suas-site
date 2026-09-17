@@ -11,7 +11,7 @@ let cachedStatus: { expiresAt: number; value: StorageStatus } | null = null;
 export type StorageStatus = {
   cloud: {
     configured: boolean;
-    provider: "TeraBox";
+    provider: string;
     used: number | null;
     limit: number | null;
     remaining: number | null;
@@ -19,12 +19,20 @@ export type StorageStatus = {
   };
 };
 
+export function cloudProviderName() {
+  return process.env.CLOUD_PROVIDER?.trim() || "TeraBox";
+}
+
 function remoteName() {
-  return process.env.TERABOX_RCLONE_REMOTE?.trim() || process.env.TERABOX_REMOTE?.trim() || "";
+  return process.env.CLOUD_RCLONE_REMOTE?.trim()
+    || process.env.TERABOX_RCLONE_REMOTE?.trim()
+    || process.env.CLOUD_REMOTE?.trim()
+    || process.env.TERABOX_REMOTE?.trim()
+    || "";
 }
 
 function remoteRoot() {
-  return (process.env.TERABOX_REMOTE_ROOT || "cloud").replace(/^\/+|\/+$/g, "");
+  return (process.env.CLOUD_REMOTE_ROOT || process.env.TERABOX_REMOTE_ROOT || "cloud").replace(/^\/+|\/+$/g, "");
 }
 
 function remotePath(record: Pick<FileRecord, "category" | "name">) {
@@ -32,7 +40,7 @@ function remotePath(record: Pick<FileRecord, "category" | "name">) {
 }
 
 function configuredCloudLimitBytes() {
-  const gib = Number(process.env.TERABOX_CLOUD_LIMIT_GIB || 0);
+  const gib = Number(process.env.CLOUD_LIMIT_GIB || process.env.TERABOX_CLOUD_LIMIT_GIB || 0);
   return Number.isFinite(gib) && gib > 0 ? Math.floor(gib * GIB) : null;
 }
 
@@ -45,8 +53,9 @@ export async function getStorageStatus(): Promise<StorageStatus> {
   if (cachedStatus && cachedStatus.expiresAt > Date.now()) return cachedStatus.value;
   const name = remoteName();
   const limitFromConfig = configuredCloudLimitBytes();
+  const provider = cloudProviderName();
   if (!name) {
-    const value = { cloud: { configured: false, provider: "TeraBox" as const, used: null, limit: limitFromConfig, remaining: null, message: "TeraBox is not configured on the server. No local fallback is used." } };
+    const value = { cloud: { configured: false, provider, used: null, limit: limitFromConfig, remaining: null, message: `${provider} is not configured on the server. No local fallback is used.` } };
     cachedStatus = { expiresAt: Date.now() + 10_000, value };
     return value;
   }
@@ -57,11 +66,11 @@ export async function getStorageStatus(): Promise<StorageStatus> {
     const used = typeof info.used === "number" ? info.used : (typeof size.bytes === "number" ? size.bytes : null);
     const total = typeof info.total === "number" ? info.total : limitFromConfig;
     const free = typeof info.free === "number" ? info.free : (used != null && total != null ? Math.max(total - used, 0) : null);
-    const value = { cloud: { configured: true as const, provider: "TeraBox" as const, used, limit: total, remaining: free, message: total == null ? "Set TERABOX_CLOUD_LIMIT_GIB to show the remaining quota." : null } };
+    const value = { cloud: { configured: true as const, provider, used, limit: total, remaining: free, message: total == null ? "Set CLOUD_LIMIT_GIB to show the remaining quota." : null } };
     cachedStatus = { expiresAt: Date.now() + 10_000, value };
     return value;
   } catch (cause) {
-    const value = { cloud: { configured: false as const, provider: "TeraBox" as const, used: null, limit: limitFromConfig, remaining: null, message: cause instanceof Error ? `TeraBox status unavailable: ${cause.message}` : "TeraBox status unavailable." } };
+    const value = { cloud: { configured: false as const, provider, used: null, limit: limitFromConfig, remaining: null, message: cause instanceof Error ? `${provider} status unavailable: ${cause.message}` : `${provider} status unavailable.` } };
     cachedStatus = { expiresAt: Date.now() + 5_000, value };
     return value;
   }
@@ -86,7 +95,7 @@ export async function syncStreamToCloud(record: FileRecord, webStream: import("n
     await execFileAsync("rclone", ["mkdir", `${name}:${remoteRoot()}/${record.category}`], { timeout: 30_000 });
     child = spawn("rclone", ["rcat", destination, "--retries", "3", "--low-level-retries", "10"], { stdio: ["pipe", "pipe", "pipe"] });
     const stdin = child.stdin;
-    if (!stdin) throw new Error("TeraBox upload process did not open stdin.");
+    if (!stdin) throw new Error(`${cloudProviderName()} upload process did not open stdin.`);
     const stderr: Buffer[] = [];
     child.stderr?.on("data", (chunk: Buffer) => stderr.push(chunk));
     const exit = waitForExit(child);
@@ -95,7 +104,7 @@ export async function syncStreamToCloud(record: FileRecord, webStream: import("n
     if (result.error) throw result.error;
     if (result.code !== 0) throw new Error(Buffer.concat(stderr).toString("utf8").trim() || `rclone exited with code ${result.code}`);
     const info = await rcloneJson(["size", "--json", destination]);
-    if (Number(info.bytes) !== expectedSize) throw new Error("TeraBox size did not match the upload.");
+    if (Number(info.bytes) !== expectedSize) throw new Error(`${cloudProviderName()} size did not match the upload.`);
     updateCloudStatus(record.name, "uploaded");
     cachedStatus = null;
     return "uploaded" as const;
