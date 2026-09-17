@@ -28,6 +28,15 @@ function formatBytes(value: number | null) {
   return `${value} B`;
 }
 
+function formatDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf()) ? "—" : date.toLocaleString();
+}
+
+function cloudStatusText(status: Version["cloudStatus"]) {
+  return { uploaded: "Uploaded to cloud", pending: "Uploading", failed: "Cloud upload failed", local: "Local only", not_configured: "Cloud not configured" }[status];
+}
+
 export default function ParamsTab() {
   const [versions, setVersions] = useState<Version[]>([]);
   const [storage, setStorage] = useState<StorageStatus | null>(null);
@@ -44,6 +53,7 @@ export default function ParamsTab() {
   const [editVersionName, setEditVersionName] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editNotesPreview, setEditNotesPreview] = useState(false);
+  const [viewTarget, setViewTarget] = useState<Version | null>(null);
 
   async function refresh() {
     try {
@@ -98,10 +108,10 @@ export default function ParamsTab() {
   }
 
   async function remove(version: Version) {
-    if (!window.confirm(`Delete parameter version “${version.versionName}”?`)) return;
+    if (!window.confirm(`Delete parameter version “${version.versionName}”?`)) return false;
     const response = await fetch(`/api/dev-params?name=${encodeURIComponent(version.name)}`, { method: "DELETE" });
-    if (!response.ok) { const result = await response.json().catch(() => ({})); setError(result.error || "Could not delete version"); return; }
-    setChanges(null); await refresh();
+    if (!response.ok) { const result = await response.json().catch(() => ({})); setError(result.error || "Could not delete version"); return false; }
+    setChanges(null); await refresh(); return true;
   }
 
   function startEdit(version: Version) {
@@ -145,7 +155,7 @@ export default function ParamsTab() {
         <div className="min-w-0 rounded border border-white/10">
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2"><h3 className="!m-0 text-sm text-white">Version history</h3><span className="font-mono text-[11px] text-white/35">{versions.length} snapshot{versions.length === 1 ? "" : "s"}</span></div>
           <div className="max-h-[28rem] overflow-y-auto">
-            {versions.length === 0 ? <p className="p-4 text-sm text-white/40">No parameter versions yet.</p> : versions.map((version) => <VersionRow key={version.name} version={version} onEdit={() => startEdit(version)} onDelete={() => void remove(version)} />)}
+            {versions.length === 0 ? <p className="p-4 text-sm text-white/40">No parameter versions yet.</p> : versions.map((version) => <VersionRow key={version.name} version={version} onOpen={() => setViewTarget(version)} onEdit={() => startEdit(version)} onDelete={() => void remove(version)} />)}
           </div>
         </div>
 
@@ -160,13 +170,22 @@ export default function ParamsTab() {
           {changes == null && <p className="px-3 pb-4 text-sm text-white/40">Choose two snapshots to see added, removed, and changed parameter values.</p>}
         </div>
       </div>
+      {viewTarget && <VersionDetailsDialog version={viewTarget} onClose={() => setViewTarget(null)} onEdit={() => { setViewTarget(null); startEdit(viewTarget); }} onDelete={async () => { if (await remove(viewTarget)) setViewTarget(null); }} />}
       {editTarget && <EditVersionDialog versionName={editVersionName} notes={editNotes} preview={editNotesPreview} busy={busy} onVersionNameChange={setEditVersionName} onNotesChange={setEditNotes} onPreviewChange={setEditNotesPreview} onClose={() => setEditTarget(null)} onSubmit={saveEdit} />}
     </section>
   );
 }
 
-function VersionRow({ version, onEdit, onDelete }: { version: Version; onEdit: () => void; onDelete: () => void }) {
-  return <div className="flex items-start gap-3 border-b border-white/10 px-3 py-2.5 last:border-b-0"><span className="material-symbols-outlined mt-0.5 shrink-0 text-lg text-teal-200/70" aria-hidden="true">tune</span><div className="min-w-0 flex-1"><p className="truncate text-sm text-white" title={version.versionName}>{version.versionName}</p><p className="truncate text-[11px] text-white/40">{version.parameterCount} params · {formatBytes(version.size)} · {version.uploaderName} · {new Date(version.uploadedAt).toLocaleDateString()}</p>{version.notes && <div className="prose prose-invert prose-xs mt-1 line-clamp-2 max-w-none text-[11px] text-white/45"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{version.notes}</ReactMarkdown></div>}</div><a href={`/api/dev-params?name=${encodeURIComponent(version.name)}`} download={version.originalName} className="text-white/40 hover:text-white" title="Download snapshot" aria-label={`Download ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">download</span></a><button type="button" onClick={onEdit} className="text-white/40 hover:text-white" title="Edit version details" aria-label={`Edit ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">edit</span></button><button type="button" onClick={onDelete} className="text-white/40 hover:text-red-200" title="Delete snapshot" aria-label={`Delete ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">delete</span></button></div>;
+function VersionRow({ version, onOpen, onEdit, onDelete }: { version: Version; onOpen: () => void; onEdit: () => void; onDelete: () => void }) {
+  return <div className="flex items-start gap-2 border-b border-white/10 px-2 py-2 last:border-b-0"><button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-start gap-3 rounded px-1 py-0.5 text-left hover:bg-white/[0.04] focus-visible:outline focus-visible:outline-1 focus-visible:outline-teal-200/70"><span className="material-symbols-outlined mt-0.5 shrink-0 text-lg text-teal-200/70" aria-hidden="true">tune</span><span className="min-w-0 flex-1"><span className="block truncate text-sm text-white" title={version.versionName}>{version.versionName}</span><span className="block truncate text-[11px] text-white/40">{version.parameterCount} params · {formatBytes(version.size)} · {version.uploaderName} · {new Date(version.uploadedAt).toLocaleDateString()}</span>{version.notes && <span className="prose prose-invert prose-xs mt-1 line-clamp-2 block max-w-none text-[11px] text-white/45"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{version.notes}</ReactMarkdown></span>}</span></button><a href={`/api/dev-params?name=${encodeURIComponent(version.name)}`} download={version.originalName} className="mt-1 text-white/40 hover:text-white" title="Download snapshot" aria-label={`Download ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">download</span></a><button type="button" onClick={onEdit} className="mt-1 text-white/40 hover:text-white" title="Edit version details" aria-label={`Edit ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">edit</span></button><button type="button" onClick={onDelete} className="mt-1 text-white/40 hover:text-red-200" title="Delete snapshot" aria-label={`Delete ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">delete</span></button></div>;
+}
+
+function VersionDetailsDialog({ version, onClose, onEdit, onDelete }: { version: Version; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
+  return <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="param-version-details-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-white/15 bg-[#11151a] shadow-2xl"><div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4"><div className="min-w-0"><p className="!m-0 font-mono text-[10px] uppercase tracking-widest text-white/40">Parameter snapshot</p><h3 id="param-version-details-title" className="!mb-0 !mt-1 truncate text-lg text-white" title={version.versionName}>{version.versionName}</h3></div><button type="button" onClick={onClose} className="shrink-0 text-white/45 hover:text-white" aria-label="Close parameter details"><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div><div className="grid gap-3 px-5 py-4 sm:grid-cols-2"><VersionDetail label="Uploaded by" value={version.uploaderName} /><VersionDetail label="Uploaded" value={formatDate(version.uploadedAt)} /><VersionDetail label="Last updated" value={formatDate(version.modifiedAt)} /><VersionDetail label="File size" value={formatBytes(version.size)} /><VersionDetail label="Parameters" value={String(version.parameterCount)} /><VersionDetail label="Cloud status" value={cloudStatusText(version.cloudStatus)} /><VersionDetail label="Local cache" value={version.localAvailable ? "Available on Pi" : "Not cached locally"} /><VersionDetail label="Original filename" value={version.originalName} /></div><div className="mx-5 rounded border border-white/10 bg-white/[0.025] p-4"><p className="!mb-2 !mt-0 text-xs uppercase tracking-wider text-white/40">Notes</p>{version.notes ? <div className="prose prose-invert max-h-64 max-w-none overflow-y-auto text-sm text-white/75"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{version.notes}</ReactMarkdown></div> : <p className="!m-0 text-sm text-white/40">No notes for this snapshot.</p>}</div><div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-5 py-4"><a href={`/api/dev-params?name=${encodeURIComponent(version.name)}`} download={version.originalName} className="inline-flex items-center gap-1.5 rounded border border-white/15 px-3 py-2 text-xs text-white/70 hover:border-white/30 hover:text-white"><span className="material-symbols-outlined text-base" aria-hidden="true">download</span>Download snapshot</a><div className="flex gap-2"><button type="button" onClick={onEdit} className="rounded border border-white/15 px-3 py-2 text-xs text-white/70 hover:border-white/30 hover:text-white">Edit details</button><button type="button" onClick={onDelete} className="rounded border border-red-300/20 px-3 py-2 text-xs text-red-200/80 hover:border-red-300/40 hover:text-red-100">Delete</button></div></div></section></div>;
+}
+
+function VersionDetail({ label, value }: { label: string; value: string }) {
+  return <div className="min-w-0"><p className="!mb-1 !mt-0 text-[10px] uppercase tracking-wider text-white/35">{label}</p><p className="!m-0 break-words text-sm text-white/75">{value}</p></div>;
 }
 
 function RichTextEditor({ label, value, onChange, compact = false }: { label: string; value: string; onChange: (value: string) => void; compact?: boolean }) {
