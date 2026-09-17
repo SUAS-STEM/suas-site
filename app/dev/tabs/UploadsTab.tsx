@@ -10,7 +10,16 @@ type UploadedFile = {
   size: number;
   type: string;
   modifiedAt: string;
+  uploadedAt: string;
+  uploaderName: string;
+  cloudStatus: "local" | "pending" | "uploaded" | "failed" | "not_configured";
+  cloudError: string | null;
+  localAvailable: boolean;
   category: UploadCategory;
+};
+
+type StorageStatus = {
+  cloud: { configured: boolean; provider: "TeraBox"; used: number | null; limit: number | null; remaining: number | null; message: string | null };
 };
 
 const CATEGORIES: Array<{ id: UploadCategory; label: string }> = [
@@ -20,6 +29,7 @@ const CATEGORIES: Array<{ id: UploadCategory; label: string }> = [
 ];
 
 function formatBytes(value: number) {
+  if (value >= 1024 * 1024 * 1024) return `${(value / 1024 / 1024 / 1024).toFixed(1)} GiB`;
   if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
   if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
   return `${value} B`;
@@ -31,7 +41,9 @@ function fileUrl(file: UploadedFile) {
 
 export default function UploadsTab() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [storage, setStorage] = useState<StorageStatus | null>(null);
   const [category, setCategory] = useState<UploadCategory>("work");
+  const [query, setQuery] = useState("");
   const [showUploader, setShowUploader] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -41,8 +53,8 @@ export default function UploadsTab() {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const visibleFiles = useMemo(
-    () => files.filter((file) => file.category === category),
-    [category, files],
+    () => files.filter((file) => file.category === category && file.originalName.toLowerCase().includes(query.trim().toLowerCase())),
+    [category, files, query],
   );
   const galleryFiles = category === "gallery"
     ? visibleFiles.filter((file) => file.type.startsWith("image/"))
@@ -61,7 +73,9 @@ export default function UploadsTab() {
         return;
       }
       if (!response.ok) throw new Error(result.error || `Could not load files (${response.status})`);
-      setFiles(result as UploadedFile[]);
+      const payload = result as { files: UploadedFile[]; storage: StorageStatus };
+      setFiles(payload.files);
+      setStorage(payload.storage);
       setMessage("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load uploaded files");
@@ -72,6 +86,11 @@ export default function UploadsTab() {
 
   useEffect(() => {
     void refresh();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => { void refresh(); }, 10_000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -136,6 +155,8 @@ export default function UploadsTab() {
         </button>
       </div>
 
+      {storage && <StorageStatusView storage={storage} />}
+
       <nav aria-label="File categories" className="flex flex-wrap gap-6 border-b border-white/10">
         {CATEGORIES.map((item) => {
           const count = files.filter((file) => file.category === item.id).length;
@@ -152,6 +173,11 @@ export default function UploadsTab() {
         })}
       </nav>
 
+      <label className="block max-w-md text-sm text-white/50">
+        Search files
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by filename" className="mt-2 block w-full rounded border border-white/15 bg-white/[0.03] px-3 py-2.5 text-white outline-none focus:border-teal-200/60" />
+      </label>
+
       {showUploader && (
         <div className="border-b border-white/10 pb-6">
           <div
@@ -165,7 +191,7 @@ export default function UploadsTab() {
               <input id="dev-file-upload" className="sr-only" type="file" multiple disabled={busy} onChange={(event) => { void upload(event.target.files ?? []); event.currentTarget.value = ""; }} />
               <span className="material-symbols-outlined block text-2xl text-teal-200" aria-hidden="true">upload_file</span>
               <span className="mt-2 block text-sm font-medium text-white">Add to {CATEGORIES.find((item) => item.id === category)?.label}</span>
-              <span className="mt-1 block text-xs text-white/45">Drop files here or click to browse</span>
+              <span className="mt-1 block text-xs text-white/45">Drop files here or click to browse · streamed directly to TeraBox</span>
             </label>
           </div>
         </div>
@@ -227,11 +253,31 @@ function FileRow({ file, onDelete }: { file: UploadedFile; onDelete: (file: Uplo
       <span className="material-symbols-outlined shrink-0 text-xl text-white/35" aria-hidden="true">{image ? "image" : "description"}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-white" title={file.originalName}>{file.originalName}</p>
-        <p className="mt-1 text-xs text-white/35">{formatBytes(file.size)} · {new Date(file.modifiedAt).toLocaleDateString()}</p>
+        <p className="mt-1 text-xs text-white/35">{formatBytes(file.size)} · uploaded by {file.uploaderName} · {new Date(file.uploadedAt).toLocaleDateString()}</p>
       </div>
+      <span className={`shrink-0 text-[11px] ${file.cloudStatus === "uploaded" ? "text-teal-200" : file.cloudStatus === "failed" ? "text-red-200" : "text-white/35"}`} title={file.cloudError || undefined}>{file.cloudStatus === "uploaded" ? "TeraBox" : file.cloudStatus === "pending" ? "Syncing" : file.cloudStatus === "failed" ? "Sync failed" : "Local"}</span>
       {image && <a href={url} target="_blank" rel="noreferrer" className="text-xs text-teal-200 hover:text-white">View</a>}
       <a href={url} className="text-xs text-white/45 hover:text-white">Download</a>
       <button type="button" onClick={() => void onDelete(file)} className="text-xs text-white/35 hover:text-red-200">Delete</button>
+    </div>
+  );
+}
+
+function StorageStatusView({ storage }: { storage: StorageStatus }) {
+  const cloudPercent = storage.cloud.limit && storage.cloud.used != null ? Math.min(100, storage.cloud.used / storage.cloud.limit * 100) : null;
+  return (
+    <div className="grid gap-3 md:grid-cols-2" aria-label="Storage status">
+      <QuotaCard label="TeraBox cloud" used={storage.cloud.used} limit={storage.cloud.limit} remaining={storage.cloud.remaining} percent={cloudPercent} message={storage.cloud.message || undefined} />
+    </div>
+  );
+}
+
+function QuotaCard({ label, used, limit, remaining, percent, message }: { label: string; used: number | null; limit: number | null; remaining: number | null; percent: number | null; message?: string }) {
+  return (
+    <div className="rounded border border-white/10 bg-white/[0.025] px-4 py-3">
+      <div className="flex items-center justify-between gap-3 text-sm"><span className="text-white/65">{label}</span><span className="font-mono text-xs text-white/45">{remaining == null ? "Unavailable" : `${formatBytes(remaining)} remaining`}</span></div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><div className={`h-full rounded-full ${percent != null && percent >= 90 ? "bg-red-300" : "bg-teal-200"}`} style={{ width: `${percent ?? 0}%` }} /></div>
+      <p className="!m-0 mt-2 text-xs text-white/35">{used == null || limit == null ? message || "Waiting for a verified cloud connection." : `${formatBytes(used)} used of ${formatBytes(limit)}`}</p>
     </div>
   );
 }

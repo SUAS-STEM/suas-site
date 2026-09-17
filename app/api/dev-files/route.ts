@@ -1,11 +1,12 @@
-import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
-import { isDevAuthorized } from "@/lib/devAdminAuth";
+import { currentDevIdentity, isDevAuthorized } from "@/lib/devAdminAuth";
+import { deleteFileFromCloud, getStorageStatus, streamFileFromCloud, syncStreamToCloud } from "@/lib/cloudStorage";
+import { deleteFileRecord, getFileRecord, listFileRecords, saveFileRecord, updateCloudStatus, type FileRecord } from "@/lib/fileRecords";
 import {
-  DEV_UPLOAD_DIR,
-  isUploadCategory,
+  cleanOriginalName,
   isStoredFileName,
+  isUploadCategory,
   MAX_UPLOAD_FILES,
   MAX_UPLOAD_FILE_BYTES,
   MAX_UPLOAD_REQUEST_BYTES,
@@ -13,166 +14,105 @@ import {
   originalNameFromStored,
   storedFileName,
   type UploadCategory,
-  uploadCategoryDir,
 } from "@/lib/devUploads";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ListedFile = {
-  name: string;
-  originalName: string;
-  size: number;
-  type: string;
-  modifiedAt: string;
-  category: UploadCategory;
-};
+type ListedFile = FileRecord & { localAvailable: false };
 
-async function listFiles(): Promise<ListedFile[]> {
-  await mkdir(DEV_UPLOAD_DIR, { recursive: true, mode: 0o700 });
-  const files: ListedFile[] = [];
-
-  const directories: Array<[UploadCategory, string]> = [
-    ["work", DEV_UPLOAD_DIR],
-    ["work", uploadCategoryDir("work")],
-    ["thirdparty", uploadCategoryDir("thirdparty")],
-    ["gallery", uploadCategoryDir("gallery")],
-  ];
-
-  for (const [category, directory] of directories) {
-    let entries;
-    try {
-      entries = await readdir(directory, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (!entry.isFile() || !isStoredFileName(entry.name)) continue;
-      const details = await stat(path.join(directory, entry.name));
-      files.push({
-        name: entry.name,
-        originalName: originalNameFromStored(entry.name),
-        size: details.size,
-        type: mimeTypeForName(entry.name),
-        modifiedAt: details.mtime.toISOString(),
-        category,
-      });
-    }
-  }
-
-  return files.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
+function listFiles(): ListedFile[] {
+  return listFileRecords().map((record) => ({ ...record, localAvailable: false }));
 }
 
-async function requireAdmin() {
-  return isDevAuthorized();
-}
-
-async function findFilePath(name: string, category: UploadCategory | null) {
-  const directories = category
-    ? category === "work"
-      ? [uploadCategoryDir("work"), DEV_UPLOAD_DIR]
-      : [uploadCategoryDir(category)]
-    : [DEV_UPLOAD_DIR, uploadCategoryDir("work"), uploadCategoryDir("thirdparty"), uploadCategoryDir("gallery")];
-
-  for (const directory of directories) {
-    const filePath = path.join(directory, name);
-    try {
-      await stat(filePath);
-      return filePath;
-    } catch {
-      // Continue through the supported category directories.
-    }
-  }
-  return null;
+function responseHeaders(record: Pick<FileRecord, "originalName" | "type">, inline: boolean, size?: number) {
+  const headers = new Headers({
+    "Cache-Control": "private, no-store",
+    "Content-Type": record.type,
+    "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${cleanOriginalName(record.originalName)}"`,
+  });
+  if (size != null) headers.set("Content-Length", String(size));
+  return headers;
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+  if (!(await isDevAuthorized())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const name = req.nextUrl.searchParams.get("name");
   if (name) {
     if (!isStoredFileName(name)) return NextResponse.json({ error: "Invalid file name" }, { status: 400 });
     const categoryParam = req.nextUrl.searchParams.get("category");
     if (categoryParam && !isUploadCategory(categoryParam)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
-    const filePath = await findFilePath(name, categoryParam as UploadCategory | null);
-    if (!filePath) return NextResponse.json({ error: "File not found" }, { status: 404 });
-    try {
-      const data = await readFile(/* turbopackIgnore: true */ filePath);
-      const originalName = originalNameFromStored(name).replace(/[`"\r\n]/g, "-");
-      const inline = mimeTypeForName(name).startsWith("image/");
-      return new NextResponse(new Uint8Array(data), {
-        headers: {
-          "Cache-Control": "private, no-store",
-          "Content-Type": mimeTypeForName(name),
-          "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${originalName}"`,
-        },
-      });
-    } catch {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
-    }
+    const record = getFileRecord(name);
+    if (!record || (categoryParam && record.category !== categoryParam)) return NextResponse.json({ error: "File not found" }, { status: 404 });
+    if (record.cloudStatus !== "uploaded") return NextResponse.json({ error: "File is not available in TeraBox yet." }, { status: 404 });
+    const remote = streamFileFromCloud(record);
+    if (!remote) return NextResponse.json({ error: "TeraBox is not configured" }, { status: 503 });
+    const body = Readable.toWeb(remote.remoteStream) as unknown as ReadableStream;
+    return new NextResponse(body, { headers: responseHeaders(record, record.type.startsWith("image/"), record.size) });
   }
-
-  return NextResponse.json(await listFiles(), {
-    headers: { "Cache-Control": "private, no-store" },
-  });
+  return NextResponse.json({ files: listFiles(), storage: await getStorageStatus() }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isDevAuthorized())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const contentLength = Number(req.headers.get("content-length") || 0);
+  if (contentLength > MAX_UPLOAD_REQUEST_BYTES + 1024 * 1024) return NextResponse.json({ error: "This upload exceeds the total upload limit" }, { status: 413 });
+  const storage = await getStorageStatus();
+  if (!storage.cloud.configured) return NextResponse.json({ error: storage.cloud.message || "TeraBox is not configured. No local fallback is available." }, { status: 503 });
+  if (storage.cloud.remaining == null) return NextResponse.json({ error: "Configure the TeraBox quota before uploading." }, { status: 503 });
 
   const form = await req.formData();
   const categoryValue = form.get("category");
-  const category: UploadCategory = typeof categoryValue === "string" && isUploadCategory(categoryValue)
-    ? categoryValue
-    : "work";
+  const category: UploadCategory = typeof categoryValue === "string" && isUploadCategory(categoryValue) ? categoryValue : "work";
   const files = form.getAll("files").filter((value): value is File => value instanceof File);
-  if (files.length === 0) {
-    const single = form.get("file");
-    if (single instanceof File) files.push(single);
-  }
   if (files.length === 0) return NextResponse.json({ error: "Choose at least one file" }, { status: 400 });
-  if (files.length > MAX_UPLOAD_FILES) {
-    return NextResponse.json({ error: `You can upload at most ${MAX_UPLOAD_FILES} files at a time` }, { status: 413 });
-  }
-
+  if (files.length > MAX_UPLOAD_FILES) return NextResponse.json({ error: `You can upload at most ${MAX_UPLOAD_FILES} files at a time` }, { status: 413 });
   const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
-  if (totalBytes > MAX_UPLOAD_REQUEST_BYTES) {
-    return NextResponse.json({ error: "This upload is limited to 400 MB total" }, { status: 413 });
-  }
+  if (totalBytes > MAX_UPLOAD_REQUEST_BYTES) return NextResponse.json({ error: "This upload exceeds the total upload limit" }, { status: 413 });
   const tooLarge = files.find((file) => file.size > MAX_UPLOAD_FILE_BYTES);
-  if (tooLarge) return NextResponse.json({ error: `${tooLarge.name} is larger than the 100 MB limit` }, { status: 413 });
+  if (tooLarge) return NextResponse.json({ error: `${tooLarge.name} is larger than the per-file limit` }, { status: 413 });
+  if (totalBytes > storage.cloud.remaining) return NextResponse.json({ error: "The TeraBox quota does not have enough room for this upload." }, { status: 413 });
 
-  const destination = uploadCategoryDir(category);
-  await mkdir(destination, { recursive: true, mode: 0o700 });
+  const identity = await currentDevIdentity();
   const uploaded: ListedFile[] = [];
   for (const file of files) {
     const name = storedFileName(file.name);
-    await writeFile(path.join(destination, name), new Uint8Array(await file.arrayBuffer()), { flag: "wx", mode: 0o600 });
-    uploaded.push({
+    const timestamp = new Date().toISOString();
+    const record: FileRecord = {
       name,
       originalName: originalNameFromStored(name),
       size: file.size,
       type: mimeTypeForName(name),
-      modifiedAt: new Date().toISOString(),
+      modifiedAt: timestamp,
+      uploadedAt: timestamp,
       category,
-    });
+      uploaderId: identity.id,
+      uploaderName: identity.name,
+      cloudStatus: "pending",
+      cloudError: null,
+    };
+    saveFileRecord(record);
+    const result = await syncStreamToCloud(record, file.stream() as unknown as import("node:stream/web").ReadableStream, file.size);
+    const saved = getFileRecord(name) || { ...record, cloudStatus: result, cloudError: result === "failed" ? "Upload failed." : null };
+    uploaded.push({ ...saved, localAvailable: false });
+    if (result !== "uploaded") {
+      return NextResponse.json({ ok: false, files: uploaded, storage: await getStorageStatus(), error: `Could not upload ${file.name} to TeraBox.` }, { status: 502 });
+    }
   }
-
-  return NextResponse.json({ ok: true, files: uploaded });
+  return NextResponse.json({ ok: true, files: uploaded, storage: await getStorageStatus() });
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isDevAuthorized())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const name = req.nextUrl.searchParams.get("name");
   if (!name || !isStoredFileName(name)) return NextResponse.json({ error: "Invalid file name" }, { status: 400 });
   const categoryParam = req.nextUrl.searchParams.get("category");
   if (categoryParam && !isUploadCategory(categoryParam)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
-  const filePath = await findFilePath(name, categoryParam as UploadCategory | null);
-  if (!filePath) return NextResponse.json({ error: "File not found" }, { status: 404 });
-  try {
-    await unlink(filePath);
-  } catch {
-    return NextResponse.json({ error: "File not found" }, { status: 404 });
-  }
-  return NextResponse.json({ ok: true });
+  const record = getFileRecord(name);
+  if (!record || (categoryParam && record.category !== categoryParam)) return NextResponse.json({ error: "File not found" }, { status: 404 });
+  if (record.cloudStatus === "pending") return NextResponse.json({ error: "This file is still uploading to TeraBox. Try again when it finishes." }, { status: 409 });
+  if (record.cloudStatus === "uploaded" && !(await deleteFileFromCloud(record))) return NextResponse.json({ error: "Could not delete the TeraBox copy." }, { status: 502 });
+  deleteFileRecord(record.name);
+  updateCloudStatus(record.name, "local");
+  return NextResponse.json({ ok: true, storage: await getStorageStatus() });
 }

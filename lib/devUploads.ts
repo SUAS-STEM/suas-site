@@ -1,28 +1,19 @@
 import path from "node:path";
-import { existsSync } from "node:fs";
 
-// The dev service runs from an immutable release directory, so keep uploaded
-// files in the checkout's persistent data directory. Containers can override
-// this with an env var and use their /data volume instead.
-export const DEV_UPLOAD_DIR =
-  process.env.SUAS_UPLOAD_DIR ||
-  (process.env.NODE_ENV === "production" && existsSync("/home/pi/suas-site-dev/data")
-    ? "/home/pi/suas-site-dev/data/uploads"
-    : path.join(process.cwd(), "data", "uploads"));
+function positiveLimit(name: string, fallback: number) {
+  const value = Number(process.env[name] || fallback);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+}
 
-export const MAX_UPLOAD_FILE_BYTES = 100 * 1024 * 1024;
-export const MAX_UPLOAD_REQUEST_BYTES = 400 * 1024 * 1024;
-export const MAX_UPLOAD_FILES = 20;
+export const MAX_UPLOAD_FILE_BYTES = positiveLimit("SUAS_MAX_UPLOAD_FILE_BYTES", 2 * 1024 * 1024 * 1024);
+export const MAX_UPLOAD_REQUEST_BYTES = positiveLimit("SUAS_MAX_UPLOAD_REQUEST_BYTES", 4 * 1024 * 1024 * 1024);
+export const MAX_UPLOAD_FILES = positiveLimit("SUAS_MAX_UPLOAD_FILES", 20);
 
 export const UPLOAD_CATEGORIES = ["work", "thirdparty", "gallery"] as const;
 export type UploadCategory = (typeof UPLOAD_CATEGORIES)[number];
 
 export function isUploadCategory(value: string | null | undefined): value is UploadCategory {
   return !!value && UPLOAD_CATEGORIES.includes(value as UploadCategory);
-}
-
-export function uploadCategoryDir(category: UploadCategory) {
-  return path.join(DEV_UPLOAD_DIR, category);
 }
 
 export function cleanOriginalName(name: string) {

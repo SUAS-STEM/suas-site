@@ -82,7 +82,7 @@ export function requestDeviceAccess(deviceId: string, name: string, userAgent: s
     };
     db.prepare("INSERT INTO device_access_requests (id, device_id, name, user_agent, requested_at, phrase) VALUES (?, ?, ?, ?, ?, ?)")
       .run(request.id, request.deviceId, request.name, request.userAgent, request.requestedAt, request.phrase);
-    return { ...request, status: "pending" as const, reviewedAt: null };
+    return { ...request, status: "pending" as const, reviewedAt: null, role: "member" as const };
   } finally {
     db.close();
   }

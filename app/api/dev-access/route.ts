@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notifyAccessRequest } from "@/lib/accessRequestEmail";
 import { isDevAdmin, isDevAuthorized, setDeviceSession } from "@/lib/devAdminAuth";
 import {
   getDeviceAccess,
@@ -67,10 +68,11 @@ export async function POST(req: NextRequest) {
     const request = requestDeviceAccess(deviceId, name, req.headers.get("user-agent") || "");
     const response = NextResponse.json({ status: request.status, requestId: request.id, phrase: request.phrase }, { status: 202 });
     if (request.status === "approved") setDeviceSession(response, deviceId, isPermanentAdmin(deviceId));
+    if (request.status === "pending") void notifyAccessRequest(request).catch((cause) => console.error("Access request email failed", cause));
     return response;
   }
 
-  if (!(await isDevAuthorized())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isDevAdmin())) return NextResponse.json({ error: "Admin approval required" }, { status: 403 });
   const id = typeof body?.id === "string" ? body.id : "";
   const review = body?.action === "approve" || body?.action === "deny" || body?.action === "kick" || body?.action === "make_admin"
     ? body.action
@@ -79,7 +81,6 @@ export async function POST(req: NextRequest) {
   const requestedId = id || (code.match(/^\d{6}$/) ? getDeviceAccessByPhrase(code)?.id || "" : "");
   if (!requestedId || !review) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   if (review === "make_admin") {
-    if (!(await isDevAdmin())) return NextResponse.json({ error: "Only an admin can assign admin access" }, { status: 403 });
     if (!promoteDevice(requestedId)) return NextResponse.json({ error: "Device not found or not eligible" }, { status: 404 });
     return NextResponse.json({ ok: true });
   }

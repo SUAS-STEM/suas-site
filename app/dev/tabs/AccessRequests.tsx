@@ -51,7 +51,7 @@ export default function AccessRequests() {
 
   if (!visible) return null;
   return (
-    <section aria-labelledby="access-requests-heading" className="border-t border-white/10 pt-8">
+    <section id="access-requests" aria-labelledby="access-requests-heading" className="border-t border-white/10 pt-8">
       <div className="mb-5">
         <p className="!mb-2 font-mono text-xs uppercase tracking-widest text-white/40">Access</p>
         <h2 id="access-requests-heading" className="!mb-1 !mt-0 !text-left">Device access</h2>
@@ -68,15 +68,17 @@ export default function AccessRequests() {
                   <p className="!m-0 text-sm text-white">{request.name}</p>
                   <p className="!m-0 mt-1 text-xs text-white/35">Code {request.phrase} · Requested {new Date(request.requestedAt).toLocaleString()}</p>
                 </div>
-                <div className="flex gap-3 text-xs">
+                {canManageAdmins ? <div className="flex gap-3 text-xs">
                     <button type="button" disabled={busy === request.id} onClick={() => void review(request.id, "deny")} className="text-white/45 hover:text-red-200 disabled:opacity-50">Deny</button>
                     <button type="button" disabled={busy === request.id} onClick={() => void review(request.id, "approve")} className="text-teal-200 hover:text-white disabled:opacity-50">Approve</button>
-                </div>
+                </div> : <span className="text-xs text-white/35">Admin approval required</span>}
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {!canManageAdmins && <p className="!m-0 mt-4 text-xs text-white/35">You can view the current requests, but only an admin can approve, deny, or remove devices.</p>}
 
       <div>
         <p className="mb-2 text-xs font-mono uppercase tracking-widest text-white/35">Approved devices</p>

@@ -42,6 +42,19 @@ export async function isDevAdmin(): Promise<boolean> {
   );
 }
 
+export async function currentDevIdentity() {
+  const jar = await cookies();
+  const deviceId = jar.get(DEVICE_COOKIE)?.value || "admin";
+  const request = getDeviceAccess(deviceId);
+  const adminToken = expectedAdminToken(deviceId);
+  const admin = Boolean(
+    expectedDevToken(deviceId) && adminToken &&
+    jar.get(COOKIE)?.value === expectedDevToken(deviceId) &&
+    (jar.get(ADMIN_COOKIE)?.value === adminToken || isPermanentAdmin(deviceId)),
+  );
+  return { id: deviceId, name: request?.name || (admin ? "Admin" : "Approved member"), role: admin ? "admin" as const : "member" as const };
+}
+
 export function setDeviceSession(response: { cookies: { set: (name: string, value: string, options: Record<string, unknown>) => void } }, deviceId: string, admin = false) {
   const token = expectedDevToken(deviceId);
   if (!token) throw new Error("Dev access is not configured");
