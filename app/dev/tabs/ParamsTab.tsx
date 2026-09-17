@@ -33,6 +33,16 @@ function formatDate(value: string) {
   return Number.isNaN(date.valueOf()) ? "—" : date.toLocaleString();
 }
 
+function notePreview(value: string) {
+  return value
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[`*_~>#-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 220);
+}
+
 function cloudStatusText(status: Version["cloudStatus"]) {
   return { uploaded: "Uploaded to cloud", pending: "Uploading", failed: "Cloud upload failed", local: "Local only", not_configured: "Cloud not configured" }[status];
 }
@@ -177,7 +187,7 @@ export default function ParamsTab() {
 }
 
 function VersionRow({ version, onOpen, onEdit, onDelete }: { version: Version; onOpen: () => void; onEdit: () => void; onDelete: () => void }) {
-  return <div className="flex items-start gap-2 border-b border-white/10 px-2 py-2 last:border-b-0"><button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-start gap-3 rounded px-1 py-0.5 text-left hover:bg-white/[0.04] focus-visible:outline focus-visible:outline-1 focus-visible:outline-teal-200/70"><span className="material-symbols-outlined mt-0.5 shrink-0 text-lg text-teal-200/70" aria-hidden="true">tune</span><span className="min-w-0 flex-1"><span className="block truncate text-sm text-white" title={version.versionName}>{version.versionName}</span><span className="block truncate text-[11px] text-white/40">{version.parameterCount} params · {formatBytes(version.size)} · {version.uploaderName} · {new Date(version.uploadedAt).toLocaleDateString()}</span>{version.notes && <span className="prose prose-invert prose-xs mt-1 line-clamp-2 block max-w-none text-[11px] text-white/45"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{version.notes}</ReactMarkdown></span>}</span></button><a href={`/api/dev-params?name=${encodeURIComponent(version.name)}`} download={version.originalName} className="mt-1 text-white/40 hover:text-white" title="Download snapshot" aria-label={`Download ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">download</span></a><button type="button" onClick={onEdit} className="mt-1 text-white/40 hover:text-white" title="Edit version details" aria-label={`Edit ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">edit</span></button><button type="button" onClick={onDelete} className="mt-1 text-white/40 hover:text-red-200" title="Delete snapshot" aria-label={`Delete ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">delete</span></button></div>;
+  return <div className="flex items-start gap-2 border-b border-white/10 px-2 py-2 last:border-b-0"><button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-start gap-3 rounded px-1 py-0.5 text-left hover:bg-white/[0.04] focus-visible:outline focus-visible:outline-1 focus-visible:outline-teal-200/70"><span className="material-symbols-outlined mt-0.5 shrink-0 text-lg text-teal-200/70" aria-hidden="true">tune</span><span className="min-w-0 flex-1"><span className="block truncate text-sm text-white" title={version.versionName}>{version.versionName}</span><span className="block truncate text-[11px] text-white/40">{version.parameterCount} params · {formatBytes(version.size)} · {version.uploaderName} · {new Date(version.uploadedAt).toLocaleDateString()}</span>{version.notes && <span className="mt-1 line-clamp-2 block text-[11px] text-white/45">{notePreview(version.notes)}</span>}</span></button><a href={`/api/dev-params?name=${encodeURIComponent(version.name)}`} download={version.originalName} className="mt-1 text-white/40 hover:text-white" title="Download snapshot" aria-label={`Download ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">download</span></a><button type="button" onClick={onEdit} className="mt-1 text-white/40 hover:text-white" title="Edit version details" aria-label={`Edit ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">edit</span></button><button type="button" onClick={onDelete} className="mt-1 text-white/40 hover:text-red-200" title="Delete snapshot" aria-label={`Delete ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">delete</span></button></div>;
 }
 
 function VersionDetailsDialog({ version, onClose, onEdit, onDelete }: { version: Version; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
