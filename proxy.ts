@@ -122,6 +122,10 @@ export async function proxy(req: NextRequest) {
 
   const loginUrl = new URL("/dev-login", requestOrigin(req));
   loginUrl.searchParams.set("redirect", isDevHostRoot ? "/" : pathname);
+  // Force browsers that already have the retired password page open to fetch
+  // the request-based access page again. The page itself is no-store, but an
+  // already-open tab can otherwise remain on the old DOM until navigation.
+  loginUrl.searchParams.set("v", String(Date.now()));
   return NextResponse.redirect(loginUrl);
 }
 
