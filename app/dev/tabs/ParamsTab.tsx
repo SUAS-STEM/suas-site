@@ -171,6 +171,7 @@ function VersionRow({ version, onEdit, onDelete }: { version: Version; onEdit: (
 
 function RichTextEditor({ label, value, onChange, compact = false }: { label: string; value: string; onChange: (value: string) => void; compact?: boolean }) {
   const editor = useRef<HTMLDivElement>(null);
+  const savedRange = useRef<Range | null>(null);
 
   useEffect(() => {
     if (editor.current && document.activeElement !== editor.current) editor.current.innerHTML = markdownToHtml(value);
@@ -180,28 +181,56 @@ function RichTextEditor({ label, value, onChange, compact = false }: { label: st
     if (editor.current) onChange(htmlToMarkdown(editor.current.innerHTML).slice(0, 5000));
   }
 
-  function command(name: string, argument?: string, requiresSelection = false) {
+  function rememberSelection() {
     const selection = window.getSelection();
-    const hasSelection = Boolean(selection && editor.current && editor.current.contains(selection.anchorNode) && !selection.isCollapsed);
-    if (requiresSelection && !hasSelection) return;
+    if (!selection || !editor.current || !selection.rangeCount || !selection.anchorNode || !selection.focusNode) return;
+    if (!editor.current.contains(selection.anchorNode) || !editor.current.contains(selection.focusNode)) return;
+    savedRange.current = selection.getRangeAt(0).cloneRange();
+  }
+
+  function restoreSelection() {
+    if (!savedRange.current) return;
+    try {
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(savedRange.current);
+    } catch {
+      savedRange.current = null;
+    }
+  }
+
+  function selectionIsUsable(requiresSelection: boolean) {
+    const selection = window.getSelection();
+    const inside = Boolean(selection && editor.current && selection.rangeCount && selection.anchorNode && selection.focusNode && editor.current.contains(selection.anchorNode) && editor.current.contains(selection.focusNode));
+    return inside && (!requiresSelection || !selection!.isCollapsed);
+  }
+
+  function command(name: string, argument?: string, requiresSelection = false) {
+    restoreSelection();
+    if (!selectionIsUsable(requiresSelection)) return;
     editor.current?.focus();
     document.execCommand(name, false, argument);
+    rememberSelection();
     updateValue();
   }
 
   function addLink() {
-    const selection = window.getSelection();
-    if (!selection || !editor.current?.contains(selection.anchorNode) || selection.isCollapsed) return;
+    restoreSelection();
+    if (!selectionIsUsable(true)) return;
     const url = window.prompt("Paste a web address");
     if (!url || !/^https?:\/\//i.test(url)) return;
     command("createLink", url, true);
   }
 
-  return <div className="block text-xs text-white/50"><span>{label}</span><div className="mt-1.5 overflow-hidden rounded border border-white/15 bg-white/[0.03]"><div className="flex items-center gap-0.5 border-b border-white/10 p-1"><RichTextButton icon="format_bold" label="Bold selected text" onClick={() => command("bold", undefined, true)} /><RichTextButton icon="format_italic" label="Italicize selected text" onClick={() => command("italic", undefined, true)} /><RichTextButton icon="format_list_bulleted" label="Bulleted list" onClick={() => command("insertUnorderedList")} /><RichTextButton icon="format_list_numbered" label="Numbered list" onClick={() => command("insertOrderedList")} /><RichTextButton icon="link" label="Link selected text" onClick={addLink} /></div><div ref={editor} contentEditable suppressContentEditableWarning role="textbox" aria-label={label} aria-multiline="true" onInput={updateValue} data-placeholder="What changed, aircraft, or test conditions…" className={`rich-note-editor block w-full overflow-y-auto bg-transparent px-3 py-2 text-sm text-white outline-none empty:before:pointer-events-none empty:before:text-white/25 empty:before:content-[attr(data-placeholder)] ${compact ? "min-h-12 max-h-28" : "min-h-32 max-h-60"}`} /></div></div>;
+  return <div className="block text-xs text-white/50"><span>{label}</span><div className="mt-1.5 overflow-hidden rounded border border-white/15 bg-white/[0.03]"><div className="flex flex-wrap items-center gap-1 border-b border-white/10 bg-white/[0.025] p-1" onMouseDown={(event) => { if (event.target instanceof Element && event.target.closest("button")) { rememberSelection(); } }}><div className="flex items-center gap-0.5"><RichTextButton icon="undo" label="Undo" onClick={() => command("undo")} /><RichTextButton icon="redo" label="Redo" onClick={() => command("redo")} /></div><ToolbarDivider /><select aria-label="Text style" defaultValue="" onMouseDown={rememberSelection} onChange={(event) => { const style = event.currentTarget.value; event.currentTarget.value = ""; if (style) command("formatBlock", style); }} className="h-7 rounded border border-white/10 bg-[#11151a] px-2 text-xs text-white/70 outline-none focus:border-teal-200/60"><option value="">Style</option><option value="p">Normal</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option></select><ToolbarDivider /><div className="flex items-center gap-0.5"><RichTextButton icon="format_bold" label="Bold selected text" onClick={() => command("bold", undefined, true)} /><RichTextButton icon="format_italic" label="Italicize selected text" onClick={() => command("italic", undefined, true)} /><RichTextButton icon="strikethrough_s" label="Strike selected text" onClick={() => command("strikeThrough", undefined, true)} /></div><ToolbarDivider /><div className="flex items-center gap-0.5"><RichTextButton icon="format_list_bulleted" label="Bulleted list" onClick={() => command("insertUnorderedList")} /><RichTextButton icon="format_list_numbered" label="Numbered list" onClick={() => command("insertOrderedList")} /></div><ToolbarDivider /><div className="flex items-center gap-0.5"><RichTextButton icon="link" label="Link selected text" onClick={addLink} /><RichTextButton icon="format_clear" label="Clear selected formatting" onClick={() => command("removeFormat", undefined, true)} /></div></div><div ref={editor} contentEditable suppressContentEditableWarning role="textbox" aria-label={label} aria-multiline="true" onInput={updateValue} onMouseUp={rememberSelection} onKeyUp={rememberSelection} onSelect={rememberSelection} onBlur={() => window.setTimeout(rememberSelection, 0)} data-placeholder="What changed, aircraft, or test conditions…" className={`rich-note-editor block w-full overflow-y-auto bg-transparent px-3 py-2 text-sm text-white outline-none empty:before:pointer-events-none empty:before:text-white/25 empty:before:content-[attr(data-placeholder)] ${compact ? "min-h-12 max-h-28" : "min-h-32 max-h-60"}`} /></div></div>;
 }
 
 function RichTextButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
-  return <button type="button" onMouseDown={(event) => { event.preventDefault(); onClick(); }} className="rounded p-1.5 text-white/50 hover:bg-white/10 hover:text-white" title={label} aria-label={label}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">{icon}</span></button>;
+  return <button type="button" onMouseDown={(event) => { event.preventDefault(); }} onClick={onClick} className="rounded p-1.5 text-white/50 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-1 focus-visible:outline-teal-200/70" title={label} aria-label={label}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">{icon}</span></button>;
+}
+
+function ToolbarDivider() {
+  return <span className="mx-0.5 h-5 w-px bg-white/10" aria-hidden="true" />;
 }
 
 function escapeHtml(value: string) {
@@ -217,6 +246,7 @@ function markdownToHtml(markdown: string) {
   const inline = (value: string) => escapeHtml(value)
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/~~([^~]+)~~/g, "<s>$1</s>")
     .replace(/_([^_]+)_/g, "<em>$1</em>");
   for (const line of lines) {
     const trimmed = line.trim();
@@ -246,11 +276,16 @@ function htmlToMarkdown(html: string) {
     switch (node.tagName.toLowerCase()) {
       case "strong": case "b": return `**${content.trim()}**`;
       case "em": case "i": return `_${content.trim()}_`;
+      case "s": case "strike": case "del": return `~~${content.trim()}~~`;
       case "a": { const href = node.getAttribute("href") || ""; return /^https?:\/\//i.test(href) ? `[${content.trim()}](${href})` : content; }
       case "br": return "\n";
-      case "li": return `- ${content.trim()}\n`;
-      case "ul": case "ol": return `\n${content.trim()}\n`;
-      case "p": case "div": case "h1": case "h2": case "h3": return `${content.trim()}\n\n`;
+      case "li": return content.trim();
+      case "ul": return `\n${Array.from(node.children).map((item) => `- ${walk(item)}`).join("\n")}\n`;
+      case "ol": return `\n${Array.from(node.children).map((item, index) => `${index + 1}. ${walk(item)}`).join("\n")}\n`;
+      case "h1": return `# ${content.trim()}\n\n`;
+      case "h2": return `## ${content.trim()}\n\n`;
+      case "h3": return `### ${content.trim()}\n\n`;
+      case "p": case "div": return `${content.trim()}\n\n`;
       default: return content;
     }
   }
