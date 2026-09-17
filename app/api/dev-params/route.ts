@@ -1,18 +1,23 @@
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { currentDevIdentity, isDevAuthorized } from "@/lib/devAdminAuth";
-import { cloudProviderName, deleteFileFromCloud, getStorageStatus, streamFileFromCloud, syncStreamToCloud } from "@/lib/cloudStorage";
-import { deleteFileRecord, deleteParamVersion, getFileRecord, getParamVersion, listParamVersions, saveFileRecord, saveParamVersion, updateCloudStatus, updateParamVersion, type FileRecord, type ParamVersion } from "@/lib/fileRecords";
+import { cloudProviderName, deleteFileFromCloud, getStorageStatus, streamFileFromCloud, syncStreamToCloudWithHash } from "@/lib/cloudStorage";
+import { deleteFileRecord, deleteParamVersion, getFileRecord, getParamVersion, listParamVersions, saveFileRecord, saveParamVersion, updateCloudStatus, updateFileHash, updateParamVersion, type FileRecord, type ParamVersion } from "@/lib/fileRecords";
 import { cleanOriginalName, isStoredFileName, mimeTypeForName, storedFileName } from "@/lib/devUploads";
 import { cleanVersionName, isParameterFile, MAX_PARAM_FILE_BYTES, parseParameterFile } from "@/lib/paramFiles";
+import { getLocalCacheStatus, isLocallyCached, removeLocalCache, streamFileFromLocal } from "@/lib/localCache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ListedVersion = Omit<ParamVersion, "parameters">;
+type ListedVersion = Omit<ParamVersion, "parameters"> & { localAvailable: boolean };
 
-function listVersions(): ListedVersion[] {
-  return listParamVersions().map(({ parameters: _parameters, ...version }) => version);
+async function listVersions(): Promise<ListedVersion[]> {
+  return Promise.all(listParamVersions().map(async ({ parameters: _parameters, ...version }) => ({ ...version, localAvailable: await isLocallyCached(version) })));
+}
+
+async function storagePayload() {
+  return { ...(await getStorageStatus()), local: await getLocalCacheStatus() };
 }
 
 function responseHeaders(record: Pick<FileRecord, "originalName" | "type">, size?: number) {
@@ -42,7 +47,8 @@ export async function GET(req: NextRequest) {
     if (!isStoredFileName(name)) return NextResponse.json({ error: "Invalid file name" }, { status: 400 });
     const version = getParamVersion(name);
     if (!version || version.cloudStatus !== "uploaded") return NextResponse.json({ error: "Parameter version not found" }, { status: 404 });
-    const remote = streamFileFromCloud(version);
+    const local = await isLocallyCached(version);
+    const remote = local ? { remoteStream: streamFileFromLocal(version) } : streamFileFromCloud(version);
     if (!remote) return NextResponse.json({ error: `${cloudProviderName()} is not configured` }, { status: 503 });
     return new NextResponse(Readable.toWeb(remote.remoteStream) as unknown as ReadableStream, { headers: responseHeaders(version, version.size) });
   }
@@ -53,7 +59,7 @@ export async function GET(req: NextRequest) {
     const right = getParamVersion(rightName);
     return left && right ? { from: left.name, to: right.name, changes: compareVersions(left, right) } : null;
   })() : null;
-  return NextResponse.json({ versions: listVersions(), comparison, storage: await getStorageStatus() }, { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json({ versions: await listVersions(), comparison, storage: await storagePayload() }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(req: NextRequest) {
@@ -70,7 +76,7 @@ export async function POST(req: NextRequest) {
   if (!isParameterFile(file.name)) return NextResponse.json({ error: "Use an ArduPilot .param, .parm, .params, or text export" }, { status: 400 });
   const versionName = cleanVersionName(typeof versionNameValue === "string" ? versionNameValue : "");
   if (!versionName) return NextResponse.json({ error: "Give this parameter set a version name" }, { status: 400 });
-  const notes = typeof notesValue === "string" ? notesValue.trim().slice(0, 500) || null : null;
+  const notes = typeof notesValue === "string" ? notesValue.trim().slice(0, 5000) || null : null;
   const parameters = parseParameterFile(await file.text());
   if (!Object.keys(parameters).length) return NextResponse.json({ error: "No parameter lines were found in that file" }, { status: 400 });
   if (file.size > storage.cloud.remaining) return NextResponse.json({ error: `The ${cloudProviderName()} quota does not have enough room for this upload.` }, { status: 413 });
@@ -88,16 +94,18 @@ export async function POST(req: NextRequest) {
     category: "params",
     uploaderId: identity.id,
     uploaderName: identity.name,
+    sha256: null,
     cloudStatus: "pending",
     cloudError: null,
   };
   saveFileRecord(record);
-  const result = await syncStreamToCloud(record, file.stream() as unknown as import("node:stream/web").ReadableStream, file.size);
-  const saved = getFileRecord(name) || { ...record, cloudStatus: result, cloudError: result === "failed" ? "Upload failed." : null };
+  const result = await syncStreamToCloudWithHash(record, file.stream() as unknown as import("node:stream/web").ReadableStream, file.size);
+  if (result.sha256) updateFileHash(name, result.sha256);
+  const saved = getFileRecord(name) || { ...record, cloudStatus: result.status, cloudError: result.status === "failed" ? "Upload failed." : null };
   saveParamVersion(saved, versionName, notes, parameters);
-  if (result !== "uploaded") return NextResponse.json({ error: `Could not upload the parameter file to ${cloudProviderName()}.` }, { status: 502 });
+  if (result.status !== "uploaded") return NextResponse.json({ error: `Could not upload the parameter file to ${cloudProviderName()}.` }, { status: 502 });
   const version = getParamVersion(name);
-  return NextResponse.json({ ok: true, version: version ? { ...version, parameters: undefined } : null, storage: await getStorageStatus() });
+  return NextResponse.json({ ok: true, version: version ? { ...version, parameters: undefined } : null, storage: await storagePayload() });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -105,10 +113,11 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json().catch(() => null) as { name?: unknown; versionName?: unknown; notes?: unknown } | null;
   const name = typeof body?.name === "string" ? body.name : "";
   const versionName = typeof body?.versionName === "string" ? cleanVersionName(body.versionName) : "";
-  const notes = typeof body?.notes === "string" ? body.notes.trim().slice(0, 500) || null : null;
+  const notes = typeof body?.notes === "string" ? body.notes.trim().slice(0, 5000) || null : null;
   if (!isStoredFileName(name) || !versionName) return NextResponse.json({ error: "A valid version name is required" }, { status: 400 });
   if (!getParamVersion(name) || !updateParamVersion(name, versionName, notes)) return NextResponse.json({ error: "Parameter version not found" }, { status: 404 });
-  return NextResponse.json({ ok: true, version: getParamVersion(name) }, { headers: { "Cache-Control": "private, no-store" } });
+  const version = getParamVersion(name);
+  return NextResponse.json({ ok: true, version: version ? { ...version, parameters: undefined } : null }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function DELETE(req: NextRequest) {
@@ -118,9 +127,9 @@ export async function DELETE(req: NextRequest) {
   const record = getParamVersion(name);
   if (!record) return NextResponse.json({ error: "Parameter version not found" }, { status: 404 });
   if (record.cloudStatus === "uploaded" && !(await deleteFileFromCloud(record))) return NextResponse.json({ error: `Could not delete the ${cloudProviderName()} copy.` }, { status: 502 });
+  await removeLocalCache(record);
   deleteParamVersion(name);
   deleteFileRecord(name);
   updateCloudStatus(name, "local");
-  return NextResponse.json({ ok: true, storage: await getStorageStatus() });
+  return NextResponse.json({ ok: true, storage: await storagePayload() });
 }
-

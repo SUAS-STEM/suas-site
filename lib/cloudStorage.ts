@@ -1,5 +1,6 @@
 import { execFile, spawn } from "node:child_process";
-import { Readable } from "node:stream";
+import { Readable, Transform } from "node:stream";
+import { createHash } from "node:crypto";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import { updateCloudStatus, type FileRecord } from "@/lib/fileRecords";
@@ -84,10 +85,14 @@ function waitForExit(child: ReturnType<typeof spawn>) {
 }
 
 export async function syncStreamToCloud(record: FileRecord, webStream: import("node:stream/web").ReadableStream, expectedSize: number) {
+  return (await syncStreamToCloudWithHash(record, webStream, expectedSize)).status;
+}
+
+export async function syncStreamToCloudWithHash(record: FileRecord, webStream: import("node:stream/web").ReadableStream, expectedSize: number) {
   const name = remoteName();
   if (!name) {
     updateCloudStatus(record.name, "not_configured");
-    return "not_configured" as const;
+    return { status: "not_configured" as const, sha256: null };
   }
   const destination = remotePath(record);
   let child: ReturnType<typeof spawn> | null = null;
@@ -99,7 +104,14 @@ export async function syncStreamToCloud(record: FileRecord, webStream: import("n
     const stderr: Buffer[] = [];
     child.stderr?.on("data", (chunk: Buffer) => stderr.push(chunk));
     const exit = waitForExit(child);
-    await pipeline(Readable.fromWeb(webStream), stdin);
+    const hash = createHash("sha256");
+    const hashingStream = new Transform({
+      transform(chunk, _encoding, callback) {
+        hash.update(chunk);
+        callback(null, chunk);
+      },
+    });
+    await pipeline(Readable.fromWeb(webStream), hashingStream, stdin);
     const result = await exit;
     if (result.error) throw result.error;
     if (result.code !== 0) throw new Error(Buffer.concat(stderr).toString("utf8").trim() || `rclone exited with code ${result.code}`);
@@ -107,12 +119,12 @@ export async function syncStreamToCloud(record: FileRecord, webStream: import("n
     if (Number(info.bytes) !== expectedSize) throw new Error(`${cloudProviderName()} size did not match the upload.`);
     updateCloudStatus(record.name, "uploaded");
     cachedStatus = null;
-    return "uploaded" as const;
+    return { status: "uploaded" as const, sha256: hash.digest("hex") };
   } catch (cause) {
     child?.kill();
     const message = cause instanceof Error ? cause.message.slice(0, 500) : "Cloud upload failed.";
     updateCloudStatus(record.name, "failed", message);
-    return "failed" as const;
+    return { status: "failed" as const, sha256: null };
   }
 }
 

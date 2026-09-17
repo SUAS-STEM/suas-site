@@ -1,8 +1,9 @@
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { currentDevIdentity, isDevAuthorized } from "@/lib/devAdminAuth";
-import { cloudProviderName, deleteFileFromCloud, getStorageStatus, streamFileFromCloud, syncStreamToCloud } from "@/lib/cloudStorage";
-import { deleteFileRecord, getFileRecord, listFileRecords, renameFileRecord, saveFileRecord, updateCloudStatus, type FileRecord } from "@/lib/fileRecords";
+import { cloudProviderName, deleteFileFromCloud, getStorageStatus, streamFileFromCloud, syncStreamToCloudWithHash } from "@/lib/cloudStorage";
+import { deleteFileRecord, findFileRecordByHash, getFileRecord, listFileRecords, renameFileRecord, saveFileRecord, updateCloudStatus, updateFileHash, type FileRecord } from "@/lib/fileRecords";
+import { cacheFileFromCloud, getLocalCacheStatus, isLocallyCached, removeLocalCache, streamFileFromLocal } from "@/lib/localCache";
 import {
   cleanOriginalName,
   isStoredFileName,
@@ -19,10 +20,14 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ListedFile = FileRecord & { localAvailable: false };
+type ListedFile = FileRecord & { localAvailable: boolean };
 
-function listFiles(): ListedFile[] {
-  return listFileRecords().map((record) => ({ ...record, localAvailable: false }));
+async function listFiles(): Promise<ListedFile[]> {
+  return Promise.all(listFileRecords().map(async (record) => ({ ...record, localAvailable: await isLocallyCached(record) })));
+}
+
+async function storagePayload() {
+  return { ...(await getStorageStatus()), local: await getLocalCacheStatus() };
 }
 
 function responseHeaders(record: Pick<FileRecord, "originalName" | "type">, inline: boolean, size?: number) {
@@ -45,12 +50,13 @@ export async function GET(req: NextRequest) {
     const record = getFileRecord(name);
     if (!record || (categoryParam && record.category !== categoryParam)) return NextResponse.json({ error: "File not found" }, { status: 404 });
     if (record.cloudStatus !== "uploaded") return NextResponse.json({ error: `File is not available in ${cloudProviderName()} yet.` }, { status: 404 });
-    const remote = streamFileFromCloud(record);
+    const local = await isLocallyCached(record);
+    const remote = local ? { remoteStream: streamFileFromLocal(record) } : streamFileFromCloud(record);
     if (!remote) return NextResponse.json({ error: `${cloudProviderName()} is not configured` }, { status: 503 });
     const body = Readable.toWeb(remote.remoteStream) as unknown as ReadableStream;
     return new NextResponse(body, { headers: responseHeaders(record, record.type.startsWith("image/"), record.size) });
   }
-  return NextResponse.json({ files: listFiles(), storage: await getStorageStatus() }, { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json({ files: await listFiles(), storage: await storagePayload() }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(req: NextRequest) {
@@ -75,6 +81,7 @@ export async function POST(req: NextRequest) {
 
   const identity = await currentDevIdentity();
   const uploaded: ListedFile[] = [];
+  const duplicates: Array<{ incomingName: string; existing: ListedFile }> = [];
   for (const file of files) {
     const name = storedFileName(file.name);
     const timestamp = new Date().toISOString();
@@ -88,37 +95,56 @@ export async function POST(req: NextRequest) {
       category,
       uploaderId: identity.id,
       uploaderName: identity.name,
+      sha256: null,
       cloudStatus: "pending",
       cloudError: null,
     };
     saveFileRecord(record);
-    const result = await syncStreamToCloud(record, file.stream() as unknown as import("node:stream/web").ReadableStream, file.size);
-    const saved = getFileRecord(name) || { ...record, cloudStatus: result, cloudError: result === "failed" ? "Upload failed." : null };
-    uploaded.push({ ...saved, localAvailable: false });
-    if (result !== "uploaded") {
-      return NextResponse.json({ ok: false, files: uploaded, storage: await getStorageStatus(), error: `Could not upload ${file.name} to ${cloudProviderName()}.` }, { status: 502 });
+    const result = await syncStreamToCloudWithHash(record, file.stream() as unknown as import("node:stream/web").ReadableStream, file.size);
+    if (result.sha256) updateFileHash(name, result.sha256);
+    const saved = getFileRecord(name) || { ...record, cloudStatus: result.status, cloudError: result.status === "failed" ? "Upload failed." : null };
+    if (result.status !== "uploaded") {
+      return NextResponse.json({ ok: false, files: uploaded, duplicates, storage: await storagePayload(), error: `Could not upload ${file.name} to ${cloudProviderName()}.` }, { status: 502 });
     }
+    const duplicate = result.sha256 ? findFileRecordByHash(result.sha256, name) : null;
+    if (duplicate) {
+      await deleteFileFromCloud(saved);
+      deleteFileRecord(name);
+      duplicates.push({ incomingName: file.name, existing: { ...duplicate, localAvailable: await isLocallyCached(duplicate) } });
+      continue;
+    }
+    const current = getFileRecord(name) || saved;
+    uploaded.push({ ...current, localAvailable: false });
   }
-  return NextResponse.json({ ok: true, files: uploaded, storage: await getStorageStatus() });
+  return NextResponse.json({ ok: true, files: uploaded, duplicates, storage: await storagePayload() });
 }
 
 export async function PATCH(req: NextRequest) {
   if (!(await isDevAuthorized())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const body = await req.json().catch(() => null) as { name?: unknown; displayName?: unknown } | null;
+  const body = await req.json().catch(() => null) as { name?: unknown; displayName?: unknown; cacheLocal?: unknown } | null;
   const name = typeof body?.name === "string" ? body.name : "";
   const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : "";
   if (!isStoredFileName(name)) return NextResponse.json({ error: "Invalid file name" }, { status: 400 });
-  if (!displayName || displayName.length > 160) return NextResponse.json({ error: "Display name must be between 1 and 160 characters" }, { status: 400 });
   const record = getFileRecord(name);
   if (!record) return NextResponse.json({ error: "File not found" }, { status: 404 });
+  if (typeof body?.cacheLocal === "boolean") {
+    if (body.cacheLocal) {
+      const cached = await cacheFileFromCloud(record);
+      if (!cached.ok) return NextResponse.json({ error: cached.message }, { status: 413 });
+    } else {
+      await removeLocalCache(record);
+    }
+    return NextResponse.json({ ok: true, file: { ...record, localAvailable: await isLocallyCached(record) }, storage: await storagePayload() }, { headers: { "Cache-Control": "private, no-store" } });
+  }
+  if (!displayName || displayName.length > 160) return NextResponse.json({ error: "Display name must be between 1 and 160 characters" }, { status: 400 });
   const cleanedName = cleanOriginalName(displayName);
   if (!cleanedName || cleanedName === "unnamed-file") return NextResponse.json({ error: "Enter a valid display name" }, { status: 400 });
   if (!renameFileRecord(name, cleanedName)) return NextResponse.json({ error: "Could not rename the file" }, { status: 500 });
   const updated = getFileRecord(name);
   return NextResponse.json({
     ok: true,
-    file: updated ? { ...updated, localAvailable: false } : null,
-    storage: await getStorageStatus(),
+    file: updated ? { ...updated, localAvailable: await isLocallyCached(updated) } : null,
+    storage: await storagePayload(),
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
@@ -132,7 +158,8 @@ export async function DELETE(req: NextRequest) {
   if (!record || (categoryParam && record.category !== categoryParam)) return NextResponse.json({ error: "File not found" }, { status: 404 });
   if (record.cloudStatus === "pending") return NextResponse.json({ error: `This file is still uploading to ${cloudProviderName()}. Try again when it finishes.` }, { status: 409 });
   if (record.cloudStatus === "uploaded" && !(await deleteFileFromCloud(record))) return NextResponse.json({ error: `Could not delete the ${cloudProviderName()} copy.` }, { status: 502 });
+  await removeLocalCache(record);
   deleteFileRecord(record.name);
   updateCloudStatus(record.name, "local");
-  return NextResponse.json({ ok: true, storage: await getStorageStatus() });
+  return NextResponse.json({ ok: true, storage: await storagePayload() });
 }

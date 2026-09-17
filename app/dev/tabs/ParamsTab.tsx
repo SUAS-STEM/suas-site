@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type Version = {
   name: string;
@@ -11,10 +13,12 @@ type Version = {
   versionName: string;
   notes: string | null;
   parameterCount: number;
+  modifiedAt: string;
+  localAvailable: boolean;
   cloudStatus: "uploaded" | "pending" | "failed" | "local" | "not_configured";
 };
 type Change = { name: string; from: string | null; to: string | null; change: "added" | "removed" | "changed" };
-type StorageStatus = { cloud: { provider: string; remaining: number | null } };
+type StorageStatus = { cloud: { provider: string; remaining: number | null }; local?: { remaining: number | null } };
 
 function formatBytes(value: number | null) {
   if (value == null) return "—";
@@ -36,6 +40,10 @@ export default function ParamsTab() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [editTarget, setEditTarget] = useState<Version | null>(null);
+  const [editVersionName, setEditVersionName] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editNotesPreview, setEditNotesPreview] = useState(false);
 
   async function refresh() {
     try {
@@ -96,6 +104,27 @@ export default function ParamsTab() {
     setChanges(null); await refresh();
   }
 
+  function startEdit(version: Version) {
+    setEditTarget(version);
+    setEditVersionName(version.versionName);
+    setEditNotes(version.notes || "");
+    setEditNotesPreview(false);
+  }
+
+  async function saveEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editTarget || !editVersionName.trim() || busy) return;
+    setBusy(true); setError(null);
+    try {
+      const response = await fetch("/api/dev-params", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: editTarget.name, versionName: editVersionName, notes: editNotes }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not update version");
+      setEditTarget(null); setMessage("Version details updated."); await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update version");
+    } finally { setBusy(false); }
+  }
+
   return (
     <section aria-labelledby="params-heading" className="space-y-5 border-t border-white/10 pt-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -107,7 +136,7 @@ export default function ParamsTab() {
         <label className="text-xs text-white/50">Version name<input value={versionName} onChange={(event) => setVersionName(event.target.value)} maxLength={120} placeholder="e.g. Pre-flight 2026-09-17" className="mt-1.5 block w-full rounded border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white outline-none focus:border-teal-200/60" /></label>
         <label className="text-xs text-white/50">Parameter file<input type="file" accept=".param,.parm,.params,.txt,text/plain" onChange={(event) => { const next = event.target.files?.[0] || null; setFile(next); if (next && !versionName) setVersionName(next.name.replace(/\.(?:param|parm|params|txt)$/i, "")); }} className="mt-1 block w-full text-xs text-white/65 file:mr-2 file:rounded file:border-0 file:bg-white/10 file:px-2 file:py-1.5 file:text-xs file:text-white" /></label>
         <button type="submit" disabled={busy || !file || !versionName.trim()} className="button-main !px-3 !py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Uploading…" : "Upload version"}</button>
-        <label className="text-xs text-white/50 md:col-span-2">Notes <span className="text-white/25">(optional)</span><input value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={500} placeholder="What changed or which aircraft this is for" className="mt-1.5 block w-full rounded border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white outline-none focus:border-teal-200/60" /></label>
+        <div className="md:col-span-2"><MarkdownEditor label="Notes" value={notes} onChange={setNotes} compact /></div>
       </form>
       {message && <p className="!m-0 text-sm text-teal-200/80">{message}</p>}
       {error && <p role="alert" className="!m-0 text-sm text-red-200">{error}</p>}
@@ -116,7 +145,7 @@ export default function ParamsTab() {
         <div className="min-w-0 rounded border border-white/10">
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2"><h3 className="!m-0 text-sm text-white">Version history</h3><span className="font-mono text-[11px] text-white/35">{versions.length} snapshot{versions.length === 1 ? "" : "s"}</span></div>
           <div className="max-h-[28rem] overflow-y-auto">
-            {versions.length === 0 ? <p className="p-4 text-sm text-white/40">No parameter versions yet.</p> : versions.map((version) => <VersionRow key={version.name} version={version} onDelete={() => void remove(version)} />)}
+            {versions.length === 0 ? <p className="p-4 text-sm text-white/40">No parameter versions yet.</p> : versions.map((version) => <VersionRow key={version.name} version={version} onEdit={() => startEdit(version)} onDelete={() => void remove(version)} />)}
           </div>
         </div>
 
@@ -131,12 +160,22 @@ export default function ParamsTab() {
           {changes == null && <p className="px-3 pb-4 text-sm text-white/40">Choose two snapshots to see added, removed, and changed parameter values.</p>}
         </div>
       </div>
+      {editTarget && <EditVersionDialog versionName={editVersionName} notes={editNotes} preview={editNotesPreview} busy={busy} onVersionNameChange={setEditVersionName} onNotesChange={setEditNotes} onPreviewChange={setEditNotesPreview} onClose={() => setEditTarget(null)} onSubmit={saveEdit} />}
     </section>
   );
 }
 
-function VersionRow({ version, onDelete }: { version: Version; onDelete: () => void }) {
-  return <div className="flex items-center gap-3 border-b border-white/10 px-3 py-2.5 last:border-b-0"><span className="material-symbols-outlined shrink-0 text-lg text-teal-200/70" aria-hidden="true">tune</span><div className="min-w-0 flex-1"><p className="truncate text-sm text-white" title={version.versionName}>{version.versionName}</p><p className="truncate text-[11px] text-white/40">{version.parameterCount} params · {formatBytes(version.size)} · {version.uploaderName} · {new Date(version.uploadedAt).toLocaleDateString()}</p>{version.notes && <p className="truncate text-[11px] text-white/30" title={version.notes}>{version.notes}</p>}</div><a href={`/api/dev-params?name=${encodeURIComponent(version.name)}`} download={version.originalName} className="text-white/40 hover:text-white" title="Download snapshot" aria-label={`Download ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">download</span></a><button type="button" onClick={onDelete} className="text-white/40 hover:text-red-200" title="Delete snapshot" aria-label={`Delete ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">delete</span></button></div>;
+function VersionRow({ version, onEdit, onDelete }: { version: Version; onEdit: () => void; onDelete: () => void }) {
+  return <div className="flex items-start gap-3 border-b border-white/10 px-3 py-2.5 last:border-b-0"><span className="material-symbols-outlined mt-0.5 shrink-0 text-lg text-teal-200/70" aria-hidden="true">tune</span><div className="min-w-0 flex-1"><p className="truncate text-sm text-white" title={version.versionName}>{version.versionName}</p><p className="truncate text-[11px] text-white/40">{version.parameterCount} params · {formatBytes(version.size)} · {version.uploaderName} · {new Date(version.uploadedAt).toLocaleDateString()}</p>{version.notes && <div className="prose prose-invert prose-xs mt-1 line-clamp-2 max-w-none text-[11px] text-white/45"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{version.notes}</ReactMarkdown></div>}</div><a href={`/api/dev-params?name=${encodeURIComponent(version.name)}`} download={version.originalName} className="text-white/40 hover:text-white" title="Download snapshot" aria-label={`Download ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">download</span></a><button type="button" onClick={onEdit} className="text-white/40 hover:text-white" title="Edit version details" aria-label={`Edit ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">edit</span></button><button type="button" onClick={onDelete} className="text-white/40 hover:text-red-200" title="Delete snapshot" aria-label={`Delete ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">delete</span></button></div>;
+}
+
+function MarkdownEditor({ label, value, onChange, compact = false }: { label: string; value: string; onChange: (value: string) => void; compact?: boolean }) {
+  const add = (snippet: string) => onChange(`${value}${value ? "\n" : ""}${snippet}`.slice(0, 5000));
+  return <label className="block text-xs text-white/50">{label} <span className="text-white/25">(rich text)</span><div className="mt-1.5 overflow-hidden rounded border border-white/15 bg-white/[0.03]"><div className="flex flex-wrap gap-1 border-b border-white/10 p-1"><button type="button" onClick={() => add("**bold text**")} className="rounded px-2 py-1 text-[11px] text-white/60 hover:bg-white/10 hover:text-white"><strong>B</strong></button><button type="button" onClick={() => add("_italic text_")} className="rounded px-2 py-1 text-[11px] italic text-white/60 hover:bg-white/10 hover:text-white">I</button><button type="button" onClick={() => add("- list item")} className="rounded px-2 py-1 text-[11px] text-white/60 hover:bg-white/10 hover:text-white">List</button><button type="button" onClick={() => add("[link text](https://)")} className="rounded px-2 py-1 text-[11px] text-white/60 hover:bg-white/10 hover:text-white">Link</button></div><textarea value={value} onChange={(event) => onChange(event.target.value.slice(0, 5000))} rows={compact ? 2 : 6} maxLength={5000} placeholder="What changed, aircraft, or test conditions…" className="block w-full resize-y bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-white/25" /></div></label>;
+}
+
+function EditVersionDialog({ versionName, notes, preview, busy, onVersionNameChange, onNotesChange, onPreviewChange, onClose, onSubmit }: { versionName: string; notes: string; preview: boolean; busy: boolean; onVersionNameChange: (value: string) => void; onNotesChange: (value: string) => void; onPreviewChange: (value: boolean) => void; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-param-version-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><form onSubmit={onSubmit} className="w-full max-w-xl rounded-lg border border-white/15 bg-[#11151a] p-5 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="!m-0 font-mono text-[10px] uppercase tracking-widest text-white/40">Edit snapshot metadata</p><h3 id="edit-param-version-title" className="!mb-0 !mt-1 text-lg text-white">Version details</h3></div><button type="button" onClick={onClose} className="text-white/45 hover:text-white" aria-label="Close edit dialog"><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div><label className="mt-5 block text-sm text-white/60">Version name<input value={versionName} onChange={(event) => onVersionNameChange(event.target.value)} maxLength={120} className="mt-2 block w-full rounded border border-white/15 bg-white/[0.04] px-3 py-2.5 text-white outline-none focus:border-teal-200/60" /></label><div className="mt-4"><div className="mb-2 flex gap-2"><button type="button" onClick={() => onPreviewChange(false)} className={`rounded px-2 py-1 text-xs ${!preview ? "bg-white text-black" : "text-white/50 hover:bg-white/10"}`}>Write</button><button type="button" onClick={() => onPreviewChange(true)} className={`rounded px-2 py-1 text-xs ${preview ? "bg-white text-black" : "text-white/50 hover:bg-white/10"}`}>Preview</button></div>{preview ? <div className="prose prose-invert min-h-32 max-w-none rounded border border-white/15 bg-white/[0.03] p-3 text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{notes || "Nothing written yet."}</ReactMarkdown></div> : <MarkdownEditor label="Notes" value={notes} onChange={onNotesChange} />}</div><div className="mt-5 flex justify-end gap-2 border-t border-white/10 pt-4"><button type="button" onClick={onClose} className="rounded border border-white/15 px-3 py-2 text-xs text-white/65 hover:text-white">Cancel</button><button type="submit" disabled={busy || !versionName.trim()} className="button-main !px-3 !py-2 text-xs disabled:opacity-50">{busy ? "Saving…" : "Save changes"}</button></div></form></div>;
 }
 
 function ChangeTable({ changes, from, to }: { changes: Change[]; from: string; to: string }) {
