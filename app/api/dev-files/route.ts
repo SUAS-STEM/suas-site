@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { currentDevIdentity, isDevAuthorized } from "@/lib/devAdminAuth";
-import { cloudProviderName, deleteFileFromCloud, getStorageStatus, streamFileFromCloud, syncStreamToCloudWithHash } from "@/lib/cloudStorage";
+import { cloudProviderName, deleteFileFromCloud, getStorageStatus, releaseCloudUpload, reserveCloudUpload, streamFileFromCloud, syncStreamToCloudWithHash } from "@/lib/cloudStorage";
 import { deleteFileRecord, findFileRecordByHash, getFileRecord, listFileRecords, renameFileRecord, saveFileRecord, updateCloudStatus, updateFileHash, type FileRecord } from "@/lib/fileRecords";
 import { cacheFileFromCloud, getLocalCacheStatus, isLocallyCached, removeLocalCache, streamFileFromLocal } from "@/lib/localCache";
 import {
@@ -78,45 +78,54 @@ export async function POST(req: NextRequest) {
   const tooLarge = files.find((file) => file.size > MAX_UPLOAD_FILE_BYTES);
   if (tooLarge) return NextResponse.json({ error: `${tooLarge.name} is larger than the per-file limit` }, { status: 413 });
   if (totalBytes > storage.cloud.remaining) return NextResponse.json({ error: `The ${cloudProviderName()} quota does not have enough room for this upload.` }, { status: 413 });
+  if (!reserveCloudUpload(totalBytes, storage.cloud.remaining)) return NextResponse.json({ error: `The ${cloudProviderName()} quota is currently reserved by another upload.` }, { status: 413 });
 
-  const identity = await currentDevIdentity();
-  const uploaded: ListedFile[] = [];
-  const duplicates: Array<{ incomingName: string; existing: ListedFile }> = [];
-  for (const file of files) {
-    const name = storedFileName(file.name);
-    const timestamp = new Date().toISOString();
-    const record: FileRecord = {
-      name,
-      originalName: originalNameFromStored(name),
-      size: file.size,
-      type: mimeTypeForName(name),
-      modifiedAt: timestamp,
-      uploadedAt: timestamp,
-      category,
-      uploaderId: identity.id,
-      uploaderName: identity.name,
-      sha256: null,
-      cloudStatus: "pending",
-      cloudError: null,
-    };
-    saveFileRecord(record);
-    const result = await syncStreamToCloudWithHash(record, file.stream() as unknown as import("node:stream/web").ReadableStream, file.size);
-    if (result.sha256) updateFileHash(name, result.sha256);
-    const saved = getFileRecord(name) || { ...record, cloudStatus: result.status, cloudError: result.status === "failed" ? "Upload failed." : null };
-    if (result.status !== "uploaded") {
-      return NextResponse.json({ ok: false, files: uploaded, duplicates, storage: await storagePayload(), error: `Could not upload ${file.name} to ${cloudProviderName()}.` }, { status: 502 });
+  try {
+    const identity = await currentDevIdentity();
+    const uploaded: ListedFile[] = [];
+    const duplicates: Array<{ incomingName: string; existing: ListedFile }> = [];
+    for (const file of files) {
+      const name = storedFileName(file.name);
+      const timestamp = new Date().toISOString();
+      const record: FileRecord = {
+        name,
+        originalName: originalNameFromStored(name),
+        size: file.size,
+        type: mimeTypeForName(name),
+        modifiedAt: timestamp,
+        uploadedAt: timestamp,
+        category,
+        uploaderId: identity.id,
+        uploaderName: identity.name,
+        sha256: null,
+        cloudStatus: "pending",
+        cloudError: null,
+      };
+      saveFileRecord(record);
+      const result = await syncStreamToCloudWithHash(record, file.stream() as unknown as import("node:stream/web").ReadableStream, file.size);
+      if (result.sha256) updateFileHash(name, result.sha256);
+      const saved = getFileRecord(name) || { ...record, cloudStatus: result.status, cloudError: result.status === "failed" ? "Upload failed." : null };
+      if (result.status !== "uploaded") {
+        return NextResponse.json({ ok: false, files: uploaded, duplicates, storage: await storagePayload(), error: `Could not upload ${file.name} to ${cloudProviderName()}.` }, { status: 502 });
+      }
+      const duplicate = result.sha256 ? findFileRecordByHash(result.sha256, name) : null;
+      if (duplicate) {
+        const removed = await deleteFileFromCloud(saved);
+        if (removed) {
+          deleteFileRecord(name);
+          duplicates.push({ incomingName: file.name, existing: { ...duplicate, localAvailable: await isLocallyCached(duplicate) } });
+          continue;
+        }
+        // Keep the newly uploaded record if cleanup fails, so a cloud object
+        // is never left orphaned and the user can still manage it later.
+      }
+      const current = getFileRecord(name) || saved;
+      uploaded.push({ ...current, localAvailable: false });
     }
-    const duplicate = result.sha256 ? findFileRecordByHash(result.sha256, name) : null;
-    if (duplicate) {
-      await deleteFileFromCloud(saved);
-      deleteFileRecord(name);
-      duplicates.push({ incomingName: file.name, existing: { ...duplicate, localAvailable: await isLocallyCached(duplicate) } });
-      continue;
-    }
-    const current = getFileRecord(name) || saved;
-    uploaded.push({ ...current, localAvailable: false });
+    return NextResponse.json({ ok: true, files: uploaded, duplicates, storage: await storagePayload() });
+  } finally {
+    releaseCloudUpload(totalBytes);
   }
-  return NextResponse.json({ ok: true, files: uploaded, duplicates, storage: await storagePayload() });
 }
 
 export async function PATCH(req: NextRequest) {

@@ -8,6 +8,7 @@ import { updateCloudStatus, type FileRecord } from "@/lib/fileRecords";
 const execFileAsync = promisify(execFile);
 const GIB = 1024 * 1024 * 1024;
 let cachedStatus: { expiresAt: number; value: StorageStatus } | null = null;
+let reservedUploadBytes = 0;
 
 export type StorageStatus = {
   cloud: {
@@ -19,6 +20,21 @@ export type StorageStatus = {
     message: string | null;
   };
 };
+
+/**
+ * Reserve quota in this process before starting an upload. The cloud status
+ * check is cached, so without a reservation two simultaneous requests could
+ * both see the same remaining space and exceed the app's configured quota.
+ */
+export function reserveCloudUpload(bytes: number, remaining: number | null) {
+  if (!Number.isFinite(bytes) || bytes < 0 || (remaining != null && remaining - reservedUploadBytes < bytes)) return false;
+  reservedUploadBytes += bytes;
+  return true;
+}
+
+export function releaseCloudUpload(bytes: number) {
+  reservedUploadBytes = Math.max(0, reservedUploadBytes - Math.max(0, bytes));
+}
 
 export function cloudProviderName() {
   return process.env.CLOUD_PROVIDER?.trim() || "TeraBox";

@@ -1,9 +1,9 @@
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { currentDevIdentity, isDevAuthorized } from "@/lib/devAdminAuth";
-import { cloudProviderName, deleteFileFromCloud, getStorageStatus, streamFileFromCloud, syncStreamToCloudWithHash } from "@/lib/cloudStorage";
+import { cloudProviderName, deleteFileFromCloud, getStorageStatus, releaseCloudUpload, reserveCloudUpload, streamFileFromCloud, syncStreamToCloudWithHash } from "@/lib/cloudStorage";
 import { deleteFileRecord, deleteParamVersion, getFileRecord, getParamVersion, listParamVersions, saveFileRecord, saveParamVersion, updateCloudStatus, updateFileHash, updateParamVersion, type FileRecord, type ParamVersion } from "@/lib/fileRecords";
-import { cleanOriginalName, isStoredFileName, mimeTypeForName, storedFileName } from "@/lib/devUploads";
+import { cleanOriginalName, isStoredFileName, storedFileName } from "@/lib/devUploads";
 import { cleanVersionName, isParameterFile, MAX_PARAM_FILE_BYTES, parseParameterFile } from "@/lib/paramFiles";
 import { getLocalCacheStatus, isLocallyCached, removeLocalCache, streamFileFromLocal } from "@/lib/localCache";
 
@@ -80,32 +80,37 @@ export async function POST(req: NextRequest) {
   const parameters = parseParameterFile(await file.text());
   if (!Object.keys(parameters).length) return NextResponse.json({ error: "No parameter lines were found in that file" }, { status: 400 });
   if (file.size > storage.cloud.remaining) return NextResponse.json({ error: `The ${cloudProviderName()} quota does not have enough room for this upload.` }, { status: 413 });
+  if (!reserveCloudUpload(file.size, storage.cloud.remaining)) return NextResponse.json({ error: `The ${cloudProviderName()} quota is currently reserved by another upload.` }, { status: 413 });
 
-  const identity = await currentDevIdentity();
-  const name = storedFileName(file.name);
-  const timestamp = new Date().toISOString();
-  const record: FileRecord = {
-    name,
-    originalName: cleanOriginalName(file.name),
-    size: file.size,
-    type: file.type || "text/plain; charset=utf-8",
-    modifiedAt: timestamp,
-    uploadedAt: timestamp,
-    category: "params",
-    uploaderId: identity.id,
-    uploaderName: identity.name,
-    sha256: null,
-    cloudStatus: "pending",
-    cloudError: null,
-  };
-  saveFileRecord(record);
-  const result = await syncStreamToCloudWithHash(record, file.stream() as unknown as import("node:stream/web").ReadableStream, file.size);
-  if (result.sha256) updateFileHash(name, result.sha256);
-  const saved = getFileRecord(name) || { ...record, cloudStatus: result.status, cloudError: result.status === "failed" ? "Upload failed." : null };
-  saveParamVersion(saved, versionName, notes, parameters);
-  if (result.status !== "uploaded") return NextResponse.json({ error: `Could not upload the parameter file to ${cloudProviderName()}.` }, { status: 502 });
-  const version = getParamVersion(name);
-  return NextResponse.json({ ok: true, version: version ? { ...version, parameters: undefined } : null, storage: await storagePayload() });
+  try {
+    const identity = await currentDevIdentity();
+    const name = storedFileName(file.name);
+    const timestamp = new Date().toISOString();
+    const record: FileRecord = {
+      name,
+      originalName: cleanOriginalName(file.name),
+      size: file.size,
+      type: file.type || "text/plain; charset=utf-8",
+      modifiedAt: timestamp,
+      uploadedAt: timestamp,
+      category: "params",
+      uploaderId: identity.id,
+      uploaderName: identity.name,
+      sha256: null,
+      cloudStatus: "pending",
+      cloudError: null,
+    };
+    saveFileRecord(record);
+    const result = await syncStreamToCloudWithHash(record, file.stream() as unknown as import("node:stream/web").ReadableStream, file.size);
+    if (result.sha256) updateFileHash(name, result.sha256);
+    const saved = getFileRecord(name) || { ...record, cloudStatus: result.status, cloudError: result.status === "failed" ? "Upload failed." : null };
+    saveParamVersion(saved, versionName, notes, parameters);
+    if (result.status !== "uploaded") return NextResponse.json({ error: `Could not upload the parameter file to ${cloudProviderName()}.` }, { status: 502 });
+    const version = getParamVersion(name);
+    return NextResponse.json({ ok: true, version: version ? { ...version, parameters: undefined } : null, storage: await storagePayload() });
+  } finally {
+    releaseCloudUpload(file.size);
+  }
 }
 
 export async function PATCH(req: NextRequest) {
