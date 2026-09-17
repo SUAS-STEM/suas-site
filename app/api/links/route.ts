@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
+import { isDevAuthorized } from "@/lib/devAdminAuth";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const REPO = "SUAS-STEM/suas-internal";
 
 export async function GET() {
+  if (!(await isDevAuthorized())) return new NextResponse("Unauthorized", { status: 401 });
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
     return new NextResponse("Not configured", { status: 500 });

@@ -1,5 +1,4 @@
-import Navbar from "@/components/Header";
-import Footer from "@/components/Footer";
+import SiteChrome from "@/components/SiteChrome";
 
 export default function SiteLayout({
   children,
@@ -7,10 +6,6 @@ export default function SiteLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <>
-      <Navbar />
-      <div className="flex-1 flex flex-col grow">{children}</div>
-      <Footer />
-    </>
+    <SiteChrome>{children}</SiteChrome>
   );
 }

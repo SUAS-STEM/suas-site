@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isDevAuthorized } from "@/lib/devAdminAuth";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const REPO = "SUAS-STEM/suas-internal";
 
 export async function GET(req: NextRequest) {
+  if (!(await isDevAuthorized())) return new NextResponse("Unauthorized", { status: 401 });
   const page = req.nextUrl.searchParams.get("page") ?? "home";
 
   if (!/^[a-z0-9-]+(\/[a-z0-9-]+)*$/.test(page)) {

@@ -12,13 +12,8 @@ services:
     env_file:
       - .env.local
       # Reuse the existing SUAS admin password/session mechanism. This file
-      # contains the long-standing dev-auth settings; stitch credentials stay
-      # in .env.local.
+      # contains the long-standing dev-auth settings.
       - /home/pi/suas-site-dev/.env.local
-    environment:
-      STITCH_STATUS_ORIGIN: http://host.docker.internal:3005
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - suas_data:/data
       - /home/pi/suas-status:/run/suas-status:ro

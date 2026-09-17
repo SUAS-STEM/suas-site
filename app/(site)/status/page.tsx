@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { notFound } from "next/navigation";
 
 type Team = {
   flight_order: string;
@@ -60,6 +61,7 @@ type StatusData = {
 };
 
 const FALLBACK_POLL_MS = 1_000;
+const STATUS_PAGE_ENABLED = false;
 
 function statusTone(status: string) {
   const s = status.toLowerCase();
@@ -125,6 +127,8 @@ function relativeAge(seconds: number) {
 }
 
 export default function StatusPage() {
+  if (!STATUS_PAGE_ENABLED) notFound();
+
   const [data, setData] = useState<StatusData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, tick] = useState(0);

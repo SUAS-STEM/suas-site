@@ -9,9 +9,13 @@ const TARGET = path.resolve(process.cwd(), "internal");
 const token = process.env.GITHUB_TOKEN;
 
 if (!token) {
-  console.warn(
-    "[fetch-internal] GITHUB_TOKEN not set — skipping. Pages that import from internal/ will fail to build."
+  const fallbackDir = path.join(TARGET, "pages");
+  mkdirSync(fallbackDir, { recursive: true });
+  writeFileSync(
+    path.join(fallbackDir, "Ssgcs.tsx"),
+    `export default function SsgcsFallback() {\n  return null;\n}\n`,
   );
+  console.warn("[fetch-internal] GITHUB_TOKEN not set — using the local SSGCS preview fallback.");
   process.exit(0);
 }
 

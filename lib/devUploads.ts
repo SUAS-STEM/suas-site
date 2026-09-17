@@ -14,6 +14,17 @@ export const MAX_UPLOAD_FILE_BYTES = 100 * 1024 * 1024;
 export const MAX_UPLOAD_REQUEST_BYTES = 400 * 1024 * 1024;
 export const MAX_UPLOAD_FILES = 20;
 
+export const UPLOAD_CATEGORIES = ["work", "thirdparty", "gallery"] as const;
+export type UploadCategory = (typeof UPLOAD_CATEGORIES)[number];
+
+export function isUploadCategory(value: string | null | undefined): value is UploadCategory {
+  return !!value && UPLOAD_CATEGORIES.includes(value as UploadCategory);
+}
+
+export function uploadCategoryDir(category: UploadCategory) {
+  return path.join(DEV_UPLOAD_DIR, category);
+}
+
 export function cleanOriginalName(name: string) {
   const cleaned = path
     .basename(name)

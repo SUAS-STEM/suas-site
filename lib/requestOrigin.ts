@@ -1,11 +1,13 @@
 import { NextRequest } from "next/server";
 
-// Next.js dev mode resolves req.url's origin from the server's own bind
-// address (e.g. localhost:3002) rather than the forwarded Host header when
-// running behind a reverse proxy/tunnel. Redirects built from req.url alone
-// leak that internal origin to the client. Use the forwarded headers instead.
+const ALLOWED_HOSTNAMES = new Set(["dev.suasstem.org", "suasstem.org", "www.suasstem.org", "localhost", "127.0.0.1"]);
+
 export function requestOrigin(req: NextRequest): string {
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const requestHost = forwardedHost || req.headers.get("host") || "dev.suasstem.org";
+  const hostname = requestHost.replace(/^\[([^\]]+)\](?::\d+)?$/, "$1").replace(/:\d+$/, "").toLowerCase();
+  const host = ALLOWED_HOSTNAMES.has(hostname) ? requestHost : "dev.suasstem.org";
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  const proto = forwardedProto === "http" && (hostname === "localhost" || hostname === "127.0.0.1") ? "http" : "https";
   return `${proto}://${host}`;
 }

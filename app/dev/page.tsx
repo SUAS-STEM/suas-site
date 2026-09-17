@@ -1,57 +1,18 @@
-"use client";
-import { useState } from "react";
-import SsgcsTab from "./tabs/SsgcsTab";
-import WikiTab from "./tabs/WikiTab";
+import DevPageShell from "./DevPageShell";
+import AccessRequests from "./tabs/AccessRequests";
 import LinksTab from "./tabs/LinksTab";
+import SsgcsTab from "./tabs/SsgcsTab";
 import UploadsTab from "./tabs/UploadsTab";
-import UploadRequestsTab from "./tabs/UploadRequestsTab";
-
-const TABS = ["SSGCS", "Wiki", "Links", "Uploads", "Login requests"] as const;
-type Tab = (typeof TABS)[number];
 
 export default function DevPage() {
-  const [tab, setTab] = useState<Tab>("SSGCS");
-
   return (
-    <main className="flex-1 flex flex-col min-h-full">
-      <div className="border-b border-white/10">
-        <div className="max-w-5xl mx-auto px-4 md:px-8 flex items-end gap-1 pt-8">
-          <div className="mb-0 mr-6 pb-3">
-            <span className="text-xs font-mono text-white/30 uppercase tracking-widest">
-              Internal
-            </span>
-          </div>
-          {TABS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                tab === t
-                  ? "border-white text-white"
-                  : "border-transparent text-white/40 hover:text-white/70"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-          <form method="POST" action="/api/dev-auth/logout" className="ml-auto mb-0 pb-3">
-            <button
-              type="submit"
-              className="text-sm font-medium text-white/40 hover:text-white/70 transition-colors"
-            >
-              Log out
-            </button>
-          </form>
-        </div>
+    <DevPageShell title="Workspace" description="Internal tools and file intake for the SUAS@STEM team.">
+      <div className="space-y-12">
+        <UploadsTab />
+        <SsgcsTab />
+        <LinksTab />
+        <AccessRequests />
       </div>
-
-      <div className="flex-1 max-w-5xl w-full mx-auto px-4 md:px-8 py-8">
-        {tab === "SSGCS" && <SsgcsTab />}
-        {tab === "Wiki" && <WikiTab />}
-        {tab === "Links" && <LinksTab />}
-        {tab === "Uploads" && <UploadsTab />}
-        {tab === "Login requests" && <UploadRequestsTab />}
-      </div>
-    </main>
+    </DevPageShell>
   );
 }

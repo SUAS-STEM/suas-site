@@ -1,10 +1,10 @@
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
-import { isStitchAdmin } from "@/lib/stitchAuth";
-import { currentUploadUser } from "@/lib/uploadAuth";
+import { isDevAuthorized } from "@/lib/devAdminAuth";
 import {
   DEV_UPLOAD_DIR,
+  isUploadCategory,
   isStoredFileName,
   MAX_UPLOAD_FILES,
   MAX_UPLOAD_FILE_BYTES,
@@ -12,6 +12,8 @@ import {
   mimeTypeForName,
   originalNameFromStored,
   storedFileName,
+  type UploadCategory,
+  uploadCategoryDir,
 } from "@/lib/devUploads";
 
 export const runtime = "nodejs";
@@ -23,30 +25,65 @@ type ListedFile = {
   size: number;
   type: string;
   modifiedAt: string;
+  category: UploadCategory;
 };
 
 async function listFiles(): Promise<ListedFile[]> {
   await mkdir(DEV_UPLOAD_DIR, { recursive: true, mode: 0o700 });
-  const entries = await readdir(DEV_UPLOAD_DIR, { withFileTypes: true });
   const files: ListedFile[] = [];
 
-  for (const entry of entries) {
-    if (!entry.isFile() || !isStoredFileName(entry.name)) continue;
-    const details = await stat(path.join(DEV_UPLOAD_DIR, entry.name));
-    files.push({
-      name: entry.name,
-      originalName: originalNameFromStored(entry.name),
-      size: details.size,
-      type: mimeTypeForName(entry.name),
-      modifiedAt: details.mtime.toISOString(),
-    });
+  const directories: Array<[UploadCategory, string]> = [
+    ["work", DEV_UPLOAD_DIR],
+    ["work", uploadCategoryDir("work")],
+    ["thirdparty", uploadCategoryDir("thirdparty")],
+    ["gallery", uploadCategoryDir("gallery")],
+  ];
+
+  for (const [category, directory] of directories) {
+    let entries;
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isFile() || !isStoredFileName(entry.name)) continue;
+      const details = await stat(path.join(directory, entry.name));
+      files.push({
+        name: entry.name,
+        originalName: originalNameFromStored(entry.name),
+        size: details.size,
+        type: mimeTypeForName(entry.name),
+        modifiedAt: details.mtime.toISOString(),
+        category,
+      });
+    }
   }
 
   return files.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
 }
 
 async function requireAdmin() {
-  return (await isStitchAdmin()) || Boolean(await currentUploadUser());
+  return isDevAuthorized();
+}
+
+async function findFilePath(name: string, category: UploadCategory | null) {
+  const directories = category
+    ? category === "work"
+      ? [uploadCategoryDir("work"), DEV_UPLOAD_DIR]
+      : [uploadCategoryDir(category)]
+    : [DEV_UPLOAD_DIR, uploadCategoryDir("work"), uploadCategoryDir("thirdparty"), uploadCategoryDir("gallery")];
+
+  for (const directory of directories) {
+    const filePath = path.join(directory, name);
+    try {
+      await stat(filePath);
+      return filePath;
+    } catch {
+      // Continue through the supported category directories.
+    }
+  }
+  return null;
 }
 
 export async function GET(req: NextRequest) {
@@ -55,14 +92,19 @@ export async function GET(req: NextRequest) {
   const name = req.nextUrl.searchParams.get("name");
   if (name) {
     if (!isStoredFileName(name)) return NextResponse.json({ error: "Invalid file name" }, { status: 400 });
+    const categoryParam = req.nextUrl.searchParams.get("category");
+    if (categoryParam && !isUploadCategory(categoryParam)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+    const filePath = await findFilePath(name, categoryParam as UploadCategory | null);
+    if (!filePath) return NextResponse.json({ error: "File not found" }, { status: 404 });
     try {
-      const data = await readFile(path.join(DEV_UPLOAD_DIR, name));
+      const data = await readFile(/* turbopackIgnore: true */ filePath);
       const originalName = originalNameFromStored(name).replace(/[`"\r\n]/g, "-");
+      const inline = mimeTypeForName(name).startsWith("image/");
       return new NextResponse(new Uint8Array(data), {
         headers: {
           "Cache-Control": "private, no-store",
           "Content-Type": mimeTypeForName(name),
-          "Content-Disposition": `attachment; filename="${originalName}"`,
+          "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${originalName}"`,
         },
       });
     } catch {
@@ -79,6 +121,10 @@ export async function POST(req: NextRequest) {
   if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const form = await req.formData();
+  const categoryValue = form.get("category");
+  const category: UploadCategory = typeof categoryValue === "string" && isUploadCategory(categoryValue)
+    ? categoryValue
+    : "work";
   const files = form.getAll("files").filter((value): value is File => value instanceof File);
   if (files.length === 0) {
     const single = form.get("file");
@@ -96,17 +142,19 @@ export async function POST(req: NextRequest) {
   const tooLarge = files.find((file) => file.size > MAX_UPLOAD_FILE_BYTES);
   if (tooLarge) return NextResponse.json({ error: `${tooLarge.name} is larger than the 100 MB limit` }, { status: 413 });
 
-  await mkdir(DEV_UPLOAD_DIR, { recursive: true, mode: 0o700 });
+  const destination = uploadCategoryDir(category);
+  await mkdir(destination, { recursive: true, mode: 0o700 });
   const uploaded: ListedFile[] = [];
   for (const file of files) {
     const name = storedFileName(file.name);
-    await writeFile(path.join(DEV_UPLOAD_DIR, name), new Uint8Array(await file.arrayBuffer()), { flag: "wx", mode: 0o600 });
+    await writeFile(path.join(destination, name), new Uint8Array(await file.arrayBuffer()), { flag: "wx", mode: 0o600 });
     uploaded.push({
       name,
       originalName: originalNameFromStored(name),
       size: file.size,
       type: mimeTypeForName(name),
       modifiedAt: new Date().toISOString(),
+      category,
     });
   }
 
@@ -117,8 +165,12 @@ export async function DELETE(req: NextRequest) {
   if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const name = req.nextUrl.searchParams.get("name");
   if (!name || !isStoredFileName(name)) return NextResponse.json({ error: "Invalid file name" }, { status: 400 });
+  const categoryParam = req.nextUrl.searchParams.get("category");
+  if (categoryParam && !isUploadCategory(categoryParam)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+  const filePath = await findFilePath(name, categoryParam as UploadCategory | null);
+  if (!filePath) return NextResponse.json({ error: "File not found" }, { status: 404 });
   try {
-    await unlink(path.join(DEV_UPLOAD_DIR, name));
+    await unlink(filePath);
   } catch {
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
