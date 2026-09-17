@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- authenticated files are served by the dev file route */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type UploadCategory = "work" | "thirdparty" | "gallery";
 type UploadedFile = {
@@ -51,6 +51,7 @@ export default function UploadsTab() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const refreshInFlight = useRef(false);
 
   const visibleFiles = useMemo(
     () => files.filter((file) => file.category === category && file.originalName.toLowerCase().includes(query.trim().toLowerCase())),
@@ -61,8 +62,10 @@ export default function UploadsTab() {
     : [];
   const viewerFile = viewerIndex == null ? null : galleryFiles[viewerIndex] || null;
 
-  async function refresh() {
-    setLoading(true);
+  async function refresh(initial = false) {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
+    if (initial) setLoading(true);
     try {
       const response = await fetch("/api/dev-files", { cache: "no-store" });
       const result = await response.json();
@@ -80,12 +83,13 @@ export default function UploadsTab() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load uploaded files");
     } finally {
-      setLoading(false);
+      refreshInFlight.current = false;
+      if (initial) setLoading(false);
     }
   }
 
   useEffect(() => {
-    void refresh();
+    void refresh(true);
   }, []);
 
   useEffect(() => {
