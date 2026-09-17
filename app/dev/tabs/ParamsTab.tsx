@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -136,7 +136,7 @@ export default function ParamsTab() {
         <label className="text-xs text-white/50">Version name<input value={versionName} onChange={(event) => setVersionName(event.target.value)} maxLength={120} placeholder="e.g. Pre-flight 2026-09-17" className="mt-1.5 block w-full rounded border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white outline-none focus:border-teal-200/60" /></label>
         <label className="text-xs text-white/50">Parameter file<input type="file" accept=".param,.parm,.params,.txt,text/plain" onChange={(event) => { const next = event.target.files?.[0] || null; setFile(next); if (next && !versionName) setVersionName(next.name.replace(/\.(?:param|parm|params|txt)$/i, "")); }} className="mt-1 block w-full text-xs text-white/65 file:mr-2 file:rounded file:border-0 file:bg-white/10 file:px-2 file:py-1.5 file:text-xs file:text-white" /></label>
         <button type="submit" disabled={busy || !file || !versionName.trim()} className="button-main !px-3 !py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Uploading…" : "Upload version"}</button>
-        <div className="md:col-span-2"><MarkdownEditor label="Notes" value={notes} onChange={setNotes} compact /></div>
+        <div className="md:col-span-2"><RichTextEditor label="Notes" value={notes} onChange={setNotes} compact /></div>
       </form>
       {message && <p className="!m-0 text-sm text-teal-200/80">{message}</p>}
       {error && <p role="alert" className="!m-0 text-sm text-red-200">{error}</p>}
@@ -169,13 +169,91 @@ function VersionRow({ version, onEdit, onDelete }: { version: Version; onEdit: (
   return <div className="flex items-start gap-3 border-b border-white/10 px-3 py-2.5 last:border-b-0"><span className="material-symbols-outlined mt-0.5 shrink-0 text-lg text-teal-200/70" aria-hidden="true">tune</span><div className="min-w-0 flex-1"><p className="truncate text-sm text-white" title={version.versionName}>{version.versionName}</p><p className="truncate text-[11px] text-white/40">{version.parameterCount} params · {formatBytes(version.size)} · {version.uploaderName} · {new Date(version.uploadedAt).toLocaleDateString()}</p>{version.notes && <div className="prose prose-invert prose-xs mt-1 line-clamp-2 max-w-none text-[11px] text-white/45"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{version.notes}</ReactMarkdown></div>}</div><a href={`/api/dev-params?name=${encodeURIComponent(version.name)}`} download={version.originalName} className="text-white/40 hover:text-white" title="Download snapshot" aria-label={`Download ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">download</span></a><button type="button" onClick={onEdit} className="text-white/40 hover:text-white" title="Edit version details" aria-label={`Edit ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">edit</span></button><button type="button" onClick={onDelete} className="text-white/40 hover:text-red-200" title="Delete snapshot" aria-label={`Delete ${version.versionName}`}><span className="material-symbols-outlined text-lg" aria-hidden="true">delete</span></button></div>;
 }
 
-function MarkdownEditor({ label, value, onChange, compact = false }: { label: string; value: string; onChange: (value: string) => void; compact?: boolean }) {
-  const add = (snippet: string) => onChange(`${value}${value ? "\n" : ""}${snippet}`.slice(0, 5000));
-  return <label className="block text-xs text-white/50">{label} <span className="text-white/25">(rich text)</span><div className="mt-1.5 overflow-hidden rounded border border-white/15 bg-white/[0.03]"><div className="flex flex-wrap gap-1 border-b border-white/10 p-1"><button type="button" onClick={() => add("**bold text**")} className="rounded px-2 py-1 text-[11px] text-white/60 hover:bg-white/10 hover:text-white"><strong>B</strong></button><button type="button" onClick={() => add("_italic text_")} className="rounded px-2 py-1 text-[11px] italic text-white/60 hover:bg-white/10 hover:text-white">I</button><button type="button" onClick={() => add("- list item")} className="rounded px-2 py-1 text-[11px] text-white/60 hover:bg-white/10 hover:text-white">List</button><button type="button" onClick={() => add("[link text](https://)")} className="rounded px-2 py-1 text-[11px] text-white/60 hover:bg-white/10 hover:text-white">Link</button></div><textarea value={value} onChange={(event) => onChange(event.target.value.slice(0, 5000))} rows={compact ? 2 : 6} maxLength={5000} placeholder="What changed, aircraft, or test conditions…" className="block w-full resize-y bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-white/25" /></div></label>;
+function RichTextEditor({ label, value, onChange, compact = false }: { label: string; value: string; onChange: (value: string) => void; compact?: boolean }) {
+  const editor = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (editor.current && document.activeElement !== editor.current) editor.current.innerHTML = markdownToHtml(value);
+  }, [value]);
+
+  function updateValue() {
+    if (editor.current) onChange(htmlToMarkdown(editor.current.innerHTML).slice(0, 5000));
+  }
+
+  function command(name: string, argument?: string) {
+    editor.current?.focus();
+    document.execCommand(name, false, argument);
+    updateValue();
+  }
+
+  function addLink() {
+    const url = window.prompt("Paste a web address");
+    if (!url || !/^https?:\/\//i.test(url)) return;
+    command("createLink", url);
+  }
+
+  return <label className="block text-xs text-white/50">{label}<div className="mt-1.5 overflow-hidden rounded border border-white/15 bg-white/[0.03]"><div className="flex items-center gap-0.5 border-b border-white/10 p-1"><RichTextButton icon="format_bold" label="Bold" onClick={() => command("bold")} /><RichTextButton icon="format_italic" label="Italic" onClick={() => command("italic")} /><RichTextButton icon="format_list_bulleted" label="Bulleted list" onClick={() => command("insertUnorderedList")} /><RichTextButton icon="format_list_numbered" label="Numbered list" onClick={() => command("insertOrderedList")} /><RichTextButton icon="link" label="Add link" onClick={addLink} /></div><div ref={editor} contentEditable suppressContentEditableWarning role="textbox" aria-label={label} aria-multiline="true" onInput={updateValue} data-placeholder="What changed, aircraft, or test conditions…" className={`rich-note-editor block w-full overflow-y-auto bg-transparent px-3 py-2 text-sm text-white outline-none empty:before:pointer-events-none empty:before:text-white/25 empty:before:content-[attr(data-placeholder)] ${compact ? "min-h-12 max-h-28" : "min-h-32 max-h-60"}`} /></div></label>;
+}
+
+function RichTextButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
+  return <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={onClick} className="rounded p-1.5 text-white/50 hover:bg-white/10 hover:text-white" title={label} aria-label={label}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">{icon}</span></button>;
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function markdownToHtml(markdown: string) {
+  if (!markdown) return "";
+  const lines = markdown.split(/\r?\n/);
+  const html: string[] = [];
+  let list: "ul" | "ol" | null = null;
+  const closeList = () => { if (list) { html.push(`</${list}>`); list = null; } };
+  const inline = (value: string) => escapeHtml(value)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/_([^_]+)_/g, "<em>$1</em>");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const bullet = trimmed.match(/^[-*]\s+(.+)/);
+    const numbered = trimmed.match(/^\d+\.\s+(.+)/);
+    if (bullet || numbered) {
+      const nextList = numbered ? "ol" : "ul";
+      if (list !== nextList) { closeList(); list = nextList; html.push(`<${list}>`); }
+      html.push(`<li>${inline((bullet || numbered)![1])}</li>`);
+    } else if (trimmed.startsWith("### ") || trimmed.startsWith("## ") || trimmed.startsWith("# ")) {
+      closeList(); const match = trimmed.match(/^(#{1,3})\s+(.+)/)!; html.push(`<h${match[1].length}>${inline(match[2])}</h${match[1].length}>`);
+    } else if (trimmed) {
+      closeList(); html.push(`<p>${inline(trimmed)}</p>`);
+    }
+  }
+  closeList();
+  return html.join("");
+}
+
+function htmlToMarkdown(html: string) {
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  function walk(node: Node): string {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent?.replace(/\u00a0/g, " ") || "";
+    if (!(node instanceof HTMLElement)) return Array.from(node.childNodes).map(walk).join("");
+    const content = Array.from(node.childNodes).map(walk).join("");
+    switch (node.tagName.toLowerCase()) {
+      case "strong": case "b": return `**${content.trim()}**`;
+      case "em": case "i": return `_${content.trim()}_`;
+      case "a": { const href = node.getAttribute("href") || ""; return /^https?:\/\//i.test(href) ? `[${content.trim()}](${href})` : content; }
+      case "br": return "\n";
+      case "li": return `- ${content.trim()}\n`;
+      case "ul": case "ol": return `\n${content.trim()}\n`;
+      case "p": case "div": case "h1": case "h2": case "h3": return `${content.trim()}\n\n`;
+      default: return content;
+    }
+  }
+  return walk(template.content).replace(/\n{3,}/g, "\n\n").trim();
 }
 
 function EditVersionDialog({ versionName, notes, preview, busy, onVersionNameChange, onNotesChange, onPreviewChange, onClose, onSubmit }: { versionName: string; notes: string; preview: boolean; busy: boolean; onVersionNameChange: (value: string) => void; onNotesChange: (value: string) => void; onPreviewChange: (value: boolean) => void; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
-  return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-param-version-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><form onSubmit={onSubmit} className="w-full max-w-xl rounded-lg border border-white/15 bg-[#11151a] p-5 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="!m-0 font-mono text-[10px] uppercase tracking-widest text-white/40">Edit snapshot metadata</p><h3 id="edit-param-version-title" className="!mb-0 !mt-1 text-lg text-white">Version details</h3></div><button type="button" onClick={onClose} className="text-white/45 hover:text-white" aria-label="Close edit dialog"><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div><label className="mt-5 block text-sm text-white/60">Version name<input value={versionName} onChange={(event) => onVersionNameChange(event.target.value)} maxLength={120} className="mt-2 block w-full rounded border border-white/15 bg-white/[0.04] px-3 py-2.5 text-white outline-none focus:border-teal-200/60" /></label><div className="mt-4"><div className="mb-2 flex gap-2"><button type="button" onClick={() => onPreviewChange(false)} className={`rounded px-2 py-1 text-xs ${!preview ? "bg-white text-black" : "text-white/50 hover:bg-white/10"}`}>Write</button><button type="button" onClick={() => onPreviewChange(true)} className={`rounded px-2 py-1 text-xs ${preview ? "bg-white text-black" : "text-white/50 hover:bg-white/10"}`}>Preview</button></div>{preview ? <div className="prose prose-invert min-h-32 max-w-none rounded border border-white/15 bg-white/[0.03] p-3 text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{notes || "Nothing written yet."}</ReactMarkdown></div> : <MarkdownEditor label="Notes" value={notes} onChange={onNotesChange} />}</div><div className="mt-5 flex justify-end gap-2 border-t border-white/10 pt-4"><button type="button" onClick={onClose} className="rounded border border-white/15 px-3 py-2 text-xs text-white/65 hover:text-white">Cancel</button><button type="submit" disabled={busy || !versionName.trim()} className="button-main !px-3 !py-2 text-xs disabled:opacity-50">{busy ? "Saving…" : "Save changes"}</button></div></form></div>;
+  return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-param-version-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><form onSubmit={onSubmit} className="w-full max-w-xl rounded-lg border border-white/15 bg-[#11151a] p-5 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="!m-0 font-mono text-[10px] uppercase tracking-widest text-white/40">Edit snapshot metadata</p><h3 id="edit-param-version-title" className="!mb-0 !mt-1 text-lg text-white">Version details</h3></div><button type="button" onClick={onClose} className="text-white/45 hover:text-white" aria-label="Close edit dialog"><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div><label className="mt-5 block text-sm text-white/60">Version name<input value={versionName} onChange={(event) => onVersionNameChange(event.target.value)} maxLength={120} className="mt-2 block w-full rounded border border-white/15 bg-white/[0.04] px-3 py-2.5 text-white outline-none focus:border-teal-200/60" /></label><div className="mt-4"><div className="mb-2 flex gap-2"><button type="button" onClick={() => onPreviewChange(false)} className={`rounded px-2 py-1 text-xs ${!preview ? "bg-white text-black" : "text-white/50 hover:bg-white/10"}`}>Write</button><button type="button" onClick={() => onPreviewChange(true)} className={`rounded px-2 py-1 text-xs ${preview ? "bg-white text-black" : "text-white/50 hover:bg-white/10"}`}>Preview</button></div>{preview ? <div className="prose prose-invert min-h-32 max-w-none rounded border border-white/15 bg-white/[0.03] p-3 text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{notes || "Nothing written yet."}</ReactMarkdown></div> : <RichTextEditor label="Notes" value={notes} onChange={onNotesChange} />}</div><div className="mt-5 flex justify-end gap-2 border-t border-white/10 pt-4"><button type="button" onClick={onClose} className="rounded border border-white/15 px-3 py-2 text-xs text-white/65 hover:text-white">Cancel</button><button type="submit" disabled={busy || !versionName.trim()} className="button-main !px-3 !py-2 text-xs disabled:opacity-50">{busy ? "Saving…" : "Save changes"}</button></div></form></div>;
 }
 
 function ChangeTable({ changes, from, to }: { changes: Change[]; from: string; to: string }) {
