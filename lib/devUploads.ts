@@ -9,7 +9,7 @@ export const MAX_UPLOAD_FILE_BYTES = positiveLimit("SUAS_MAX_UPLOAD_FILE_BYTES",
 export const MAX_UPLOAD_REQUEST_BYTES = positiveLimit("SUAS_MAX_UPLOAD_REQUEST_BYTES", 4 * 1024 * 1024 * 1024);
 export const MAX_UPLOAD_FILES = positiveLimit("SUAS_MAX_UPLOAD_FILES", 20);
 
-export const UPLOAD_CATEGORIES = ["work", "thirdparty", "gallery"] as const;
+export const UPLOAD_CATEGORIES = ["work", "thirdparty", "gallery", "params"] as const;
 export type UploadCategory = (typeof UPLOAD_CATEGORIES)[number];
 
 export function isUploadCategory(value: string | null | undefined): value is UploadCategory {

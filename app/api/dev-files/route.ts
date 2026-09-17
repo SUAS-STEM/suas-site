@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { currentDevIdentity, isDevAuthorized } from "@/lib/devAdminAuth";
 import { cloudProviderName, deleteFileFromCloud, getStorageStatus, streamFileFromCloud, syncStreamToCloud } from "@/lib/cloudStorage";
-import { deleteFileRecord, getFileRecord, listFileRecords, saveFileRecord, updateCloudStatus, type FileRecord } from "@/lib/fileRecords";
+import { deleteFileRecord, getFileRecord, listFileRecords, renameFileRecord, saveFileRecord, updateCloudStatus, type FileRecord } from "@/lib/fileRecords";
 import {
   cleanOriginalName,
   isStoredFileName,
@@ -100,6 +100,26 @@ export async function POST(req: NextRequest) {
     }
   }
   return NextResponse.json({ ok: true, files: uploaded, storage: await getStorageStatus() });
+}
+
+export async function PATCH(req: NextRequest) {
+  if (!(await isDevAuthorized())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const body = await req.json().catch(() => null) as { name?: unknown; displayName?: unknown } | null;
+  const name = typeof body?.name === "string" ? body.name : "";
+  const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : "";
+  if (!isStoredFileName(name)) return NextResponse.json({ error: "Invalid file name" }, { status: 400 });
+  if (!displayName || displayName.length > 160) return NextResponse.json({ error: "Display name must be between 1 and 160 characters" }, { status: 400 });
+  const record = getFileRecord(name);
+  if (!record) return NextResponse.json({ error: "File not found" }, { status: 404 });
+  const cleanedName = cleanOriginalName(displayName);
+  if (!cleanedName || cleanedName === "unnamed-file") return NextResponse.json({ error: "Enter a valid display name" }, { status: 400 });
+  if (!renameFileRecord(name, cleanedName)) return NextResponse.json({ error: "Could not rename the file" }, { status: 500 });
+  const updated = getFileRecord(name);
+  return NextResponse.json({
+    ok: true,
+    file: updated ? { ...updated, localAvailable: false } : null,
+    storage: await getStorageStatus(),
+  }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function DELETE(req: NextRequest) {

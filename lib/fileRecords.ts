@@ -24,6 +24,13 @@ export type FileRecord = {
   cloudError: string | null;
 };
 
+export type ParamVersion = FileRecord & {
+  versionName: string;
+  notes: string | null;
+  parameterCount: number;
+  parameters: Record<string, string>;
+};
+
 function openDb() {
   mkdirSync(path.dirname(DB_PATH), { recursive: true });
   try { chmodSync(path.dirname(DB_PATH), 0o700); } catch { /* Best effort on non-POSIX development filesystems. */ }
@@ -43,6 +50,13 @@ function openDb() {
       uploader_name TEXT NOT NULL,
       cloud_status TEXT NOT NULL DEFAULT 'not_configured',
       cloud_error TEXT
+    );
+    CREATE TABLE IF NOT EXISTS param_versions (
+      file_name TEXT PRIMARY KEY REFERENCES file_records(name) ON DELETE CASCADE,
+      version_name TEXT NOT NULL,
+      notes TEXT,
+      parameter_count INTEGER NOT NULL,
+      parameters_json TEXT NOT NULL
     )
   `);
   return db;
@@ -123,6 +137,89 @@ export function updateCloudStatus(name: string, status: CloudFileStatus, error: 
   const db = openDb();
   try {
     db.prepare("UPDATE file_records SET cloud_status = ?, cloud_error = ? WHERE name = ?").run(status, error, name);
+  } finally {
+    db.close();
+  }
+}
+
+export function renameFileRecord(name: string, displayName: string) {
+  const db = openDb();
+  try {
+    return db.prepare("UPDATE file_records SET original_name = ?, modified_at = ? WHERE name = ?")
+      .run(displayName, new Date().toISOString(), name).changes > 0;
+  } finally {
+    db.close();
+  }
+}
+
+function mapParamRow(row: Record<string, unknown>): ParamVersion {
+  const file = mapRow(row);
+  let parameters: Record<string, string> = {};
+  try {
+    const parsed = JSON.parse(String(row.parameters_json || "{}"));
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) parameters = parsed as Record<string, string>;
+  } catch { /* Keep a damaged legacy snapshot readable as an empty set. */ }
+  return {
+    ...file,
+    versionName: String(row.version_name),
+    notes: row.notes ? String(row.notes) : null,
+    parameterCount: Number(row.parameter_count),
+    parameters,
+  };
+}
+
+export function saveParamVersion(record: FileRecord, versionName: string, notes: string | null, parameters: Record<string, string>) {
+  const db = openDb();
+  try {
+    db.prepare(`
+      INSERT INTO param_versions (file_name, version_name, notes, parameter_count, parameters_json)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(file_name) DO UPDATE SET
+        version_name = excluded.version_name,
+        notes = excluded.notes,
+        parameter_count = excluded.parameter_count,
+        parameters_json = excluded.parameters_json
+    `).run(record.name, versionName, notes, Object.keys(parameters).length, JSON.stringify(parameters));
+  } finally {
+    db.close();
+  }
+}
+
+export function listParamVersions() {
+  const db = openDb();
+  try {
+    return (db.prepare(`SELECT f.*, p.version_name, p.notes, p.parameter_count, p.parameters_json
+      FROM param_versions p JOIN file_records f ON f.name = p.file_name
+      ORDER BY f.uploaded_at DESC, f.name ASC`).all() as Array<Record<string, unknown>>).map(mapParamRow);
+  } finally {
+    db.close();
+  }
+}
+
+export function getParamVersion(name: string) {
+  const db = openDb();
+  try {
+    const row = db.prepare(`SELECT f.*, p.version_name, p.notes, p.parameter_count, p.parameters_json
+      FROM param_versions p JOIN file_records f ON f.name = p.file_name WHERE f.name = ?`).get(name) as Record<string, unknown> | undefined;
+    return row ? mapParamRow(row) : null;
+  } finally {
+    db.close();
+  }
+}
+
+export function updateParamVersion(name: string, versionName: string, notes: string | null) {
+  const db = openDb();
+  try {
+    return db.prepare("UPDATE param_versions SET version_name = ?, notes = ? WHERE file_name = ?").run(versionName, notes, name).changes > 0;
+  } finally {
+    db.close();
+  }
+}
+
+export function deleteParamVersion(name: string) {
+  const db = openDb();
+  try {
+    db.prepare("DELETE FROM param_versions WHERE file_name = ?").run(name);
   } finally {
     db.close();
   }

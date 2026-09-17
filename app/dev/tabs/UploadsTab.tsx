@@ -51,6 +51,10 @@ export default function UploadsTab() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [propertiesFile, setPropertiesFile] = useState<UploadedFile | null>(null);
+  const [renameTarget, setRenameTarget] = useState<UploadedFile | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameBusy, setRenameBusy] = useState(false);
   const refreshInFlight = useRef(false);
 
   const visibleFiles = useMemo(
@@ -145,6 +149,34 @@ export default function UploadsTab() {
     await refresh();
   }
 
+  function startRename(file: UploadedFile) {
+    setRenameTarget(file);
+    setRenameValue(file.originalName);
+  }
+
+  async function renameFile() {
+    if (!renameTarget || !renameValue.trim() || renameBusy) return;
+    setRenameBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/dev-files", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: renameTarget.name, displayName: renameValue }),
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string; file?: UploadedFile };
+      if (!response.ok || !result.file) throw new Error(result.error || "Could not rename file");
+      setFiles((current) => current.map((file) => file.name === result.file!.name ? result.file! : file));
+      setPropertiesFile((current) => current?.name === result.file!.name ? result.file! : current);
+      setRenameTarget(null);
+      setMessage("Display name updated.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not rename file");
+    } finally {
+      setRenameBusy(false);
+    }
+  }
+
   return (
     <section aria-labelledby="files-heading" className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-4">
@@ -211,20 +243,19 @@ export default function UploadsTab() {
           {category === "gallery" ? "No images in Gallery yet." : `No files in ${CATEGORIES.find((item) => item.id === category)?.label}.`}
         </div>
       ) : category === "gallery" ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="max-h-[42rem] overflow-y-auto pr-1">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {galleryFiles.map((file, index) => (
-            <button key={file.name} type="button" onClick={() => setViewerIndex(index)} className="group overflow-hidden rounded border border-white/10 bg-white/[0.02] text-left transition hover:border-white/35">
-              <img src={fileUrl(file)} alt={file.originalName} className="aspect-square w-full object-cover transition group-hover:scale-[1.02]" />
-              <span className="block truncate px-3 py-2 text-xs text-white/70">{file.originalName}</span>
-            </button>
+            <GalleryCard key={file.name} file={file} index={index} onView={() => setViewerIndex(index)} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} />
           ))}
           {visibleFiles.filter((file) => !file.type.startsWith("image/")).map((file) => (
-            <FileRow key={file.name} file={file} onDelete={removeFile} provider={storage?.cloud.provider || "cloud storage"} />
+            <FileRow key={file.name} file={file} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} provider={storage?.cloud.provider || "cloud storage"} />
           ))}
+          </div>
         </div>
       ) : (
-        <div className="divide-y divide-white/10 border-y border-white/10">
-          {visibleFiles.map((file) => <FileRow key={file.name} file={file} onDelete={removeFile} provider={storage?.cloud.provider || "cloud storage"} />)}
+        <div className="max-h-[42rem] overflow-y-auto divide-y divide-white/10 border-y border-white/10 pr-1">
+          {visibleFiles.map((file) => <FileRow key={file.name} file={file} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} provider={storage?.cloud.provider || "cloud storage"} />)}
         </div>
       )}
 
@@ -236,7 +267,7 @@ export default function UploadsTab() {
           <button type="button" className="absolute left-4 text-white/70 hover:text-white sm:left-8" onClick={(event) => { event.stopPropagation(); setViewerIndex((index) => index == null ? null : (index - 1 + galleryFiles.length) % galleryFiles.length); }} aria-label="Previous image">
             <span className="material-symbols-outlined text-4xl" aria-hidden="true">chevron_left</span>
           </button>
-          <figure className="flex max-h-full max-w-5xl flex-col items-center gap-3" onClick={(event) => event.stopPropagation()}>
+          <figure className="flex max-h-[90vh] max-w-5xl flex-col items-center gap-3 overflow-auto" onClick={(event) => event.stopPropagation()}>
             <img src={fileUrl(viewerFile)} alt={viewerFile.originalName} className="max-h-[78vh] max-w-full object-contain" />
             <figcaption className="text-sm text-white/65">{viewerFile.originalName}</figcaption>
           </figure>
@@ -245,24 +276,90 @@ export default function UploadsTab() {
           </button>
         </div>
       )}
+
+      {propertiesFile && <PropertiesDialog file={propertiesFile} provider={storage?.cloud.provider || "cloud storage"} onClose={() => setPropertiesFile(null)} onRename={() => { setPropertiesFile(null); startRename(propertiesFile); }} />}
+      {renameTarget && <RenameDialog value={renameValue} busy={renameBusy} onChange={setRenameValue} onClose={() => setRenameTarget(null)} onSubmit={() => void renameFile()} />}
     </section>
   );
 }
 
-function FileRow({ file, onDelete, provider }: { file: UploadedFile; onDelete: (file: UploadedFile) => Promise<void>; provider: string }) {
+function GalleryCard({ file, index, onView, onDelete, onRename, onProperties }: { file: UploadedFile; index: number; onView: () => void; onDelete: (file: UploadedFile) => Promise<void>; onRename: (file: UploadedFile) => void; onProperties: (file: UploadedFile) => void }) {
+  return (
+    <article className="overflow-hidden rounded border border-white/10 bg-white/[0.02] transition hover:border-white/30">
+      <button type="button" onClick={onView} className="group block w-full text-left" aria-label={`View ${file.originalName}`}>
+        <img src={fileUrl(file)} alt={file.originalName} className="aspect-square w-full object-cover transition group-hover:scale-[1.02]" />
+      </button>
+      <div className="flex items-center gap-2 px-2.5 py-2">
+        <p className="min-w-0 flex-1 truncate text-xs text-white/75" title={file.originalName}>{file.originalName}</p>
+        <button type="button" onClick={() => onProperties(file)} className="text-white/40 hover:text-white" title="File properties" aria-label={`Properties for ${file.originalName}`}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">info</span></button>
+        <button type="button" onClick={() => onRename(file)} className="text-white/40 hover:text-white" title="Rename display name" aria-label={`Rename ${file.originalName}`}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">edit</span></button>
+        <a href={fileUrl(file)} download className="text-white/40 hover:text-white" title="Download" aria-label={`Download ${file.originalName}`}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">download</span></a>
+        <button type="button" onClick={() => void onDelete(file)} className="text-white/40 hover:text-red-200" title="Delete" aria-label={`Delete ${file.originalName}`}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">delete</span></button>
+      </div>
+      <p className="truncate px-2.5 pb-2 text-[11px] text-white/35">{formatBytes(file.size)} · {file.uploaderName}</p>
+    </article>
+  );
+}
+
+function FileRow({ file, onDelete, onRename, onProperties, provider }: { file: UploadedFile; onDelete: (file: UploadedFile) => Promise<void>; onRename: (file: UploadedFile) => void; onProperties: (file: UploadedFile) => void; provider: string }) {
   const image = file.type.startsWith("image/");
   const url = fileUrl(file);
   return (
-    <div className="flex items-center gap-3 py-3">
+    <div className="flex items-center gap-2.5 px-1 py-2.5 sm:gap-3">
       <span className="material-symbols-outlined shrink-0 text-xl text-white/35" aria-hidden="true">{image ? "image" : "description"}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-white" title={file.originalName}>{file.originalName}</p>
-        <p className="mt-1 text-xs text-white/35">{formatBytes(file.size)} · uploaded by {file.uploaderName} · {new Date(file.uploadedAt).toLocaleDateString()}</p>
+        <p className="mt-0.5 truncate text-xs text-white/35">{formatBytes(file.size)} · {file.uploaderName} · {new Date(file.uploadedAt).toLocaleDateString()}</p>
       </div>
-      <span className={`shrink-0 text-[11px] ${file.cloudStatus === "uploaded" ? "text-teal-200" : file.cloudStatus === "failed" ? "text-red-200" : "text-white/35"}`} title={file.cloudError || undefined}>{file.cloudStatus === "uploaded" ? provider : file.cloudStatus === "pending" ? "Syncing" : file.cloudStatus === "failed" ? "Sync failed" : "Local"}</span>
-      {image && <a href={url} target="_blank" rel="noreferrer" className="text-xs text-teal-200 hover:text-white">View</a>}
-      <a href={url} className="text-xs text-white/45 hover:text-white">Download</a>
-      <button type="button" onClick={() => void onDelete(file)} className="text-xs text-white/35 hover:text-red-200">Delete</button>
+      <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] sm:inline ${file.cloudStatus === "uploaded" ? "border-teal-200/20 text-teal-200" : file.cloudStatus === "failed" ? "border-red-200/20 text-red-200" : "border-white/10 text-white/35"}`} title={file.cloudError || undefined}>{file.cloudStatus === "uploaded" ? provider : file.cloudStatus === "pending" ? "Syncing" : file.cloudStatus === "failed" ? "Sync failed" : "Local"}</span>
+      {image && <a href={url} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white" title="View" aria-label={`View ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">open_in_new</span></a>}
+      <button type="button" onClick={() => onProperties(file)} className="text-white/40 hover:text-white" title="File properties" aria-label={`Properties for ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">info</span></button>
+      <button type="button" onClick={() => onRename(file)} className="text-white/40 hover:text-white" title="Rename display name" aria-label={`Rename ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">edit</span></button>
+      <a href={url} download className="text-white/40 hover:text-white" title="Download" aria-label={`Download ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">download</span></a>
+      <button type="button" onClick={() => void onDelete(file)} className="text-white/40 hover:text-red-200" title="Delete" aria-label={`Delete ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">delete</span></button>
+    </div>
+  );
+}
+
+function PropertiesDialog({ file, provider, onClose, onRename }: { file: UploadedFile; provider: string; onClose: () => void; onRename: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="file-properties-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="w-full max-w-md rounded-lg border border-white/15 bg-[#11151a] p-5 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div><p className="!m-0 font-mono text-[10px] uppercase tracking-widest text-white/40">File details</p><h3 id="file-properties-title" className="!mb-0 !mt-1 truncate text-lg text-white">{file.originalName}</h3></div>
+          <button type="button" onClick={onClose} className="text-white/45 hover:text-white" aria-label="Close file properties"><span className="material-symbols-outlined" aria-hidden="true">close</span></button>
+        </div>
+        <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-5 gap-y-3 text-sm">
+          <Property label="Uploaded by" value={file.uploaderName} />
+          <Property label="Size" value={formatBytes(file.size)} />
+          <Property label="Type" value={file.type || "Unknown"} />
+          <Property label="Category" value={CATEGORIES.find((item) => item.id === file.category)?.label || file.category} />
+          <Property label="Uploaded" value={new Date(file.uploadedAt).toLocaleString()} />
+          <Property label="Last updated" value={new Date(file.modifiedAt).toLocaleString()} />
+          <Property label="Storage" value={file.cloudStatus === "uploaded" ? provider : file.cloudStatus} />
+        </dl>
+        <div className="mt-5 flex justify-end gap-2 border-t border-white/10 pt-4">
+          <button type="button" onClick={onRename} className="button-main !px-3 !py-2 text-xs">Rename display name</button>
+          <button type="button" onClick={onClose} className="rounded border border-white/15 px-3 py-2 text-xs text-white/65 hover:text-white">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Property({ label, value }: { label: string; value: string }) {
+  return <><dt className="text-white/40">{label}</dt><dd className="min-w-0 truncate text-right text-white/75" title={value}>{value}</dd></>;
+}
+
+function RenameDialog({ value, busy, onChange, onClose, onSubmit }: { value: string; busy: boolean; onChange: (value: string) => void; onClose: () => void; onSubmit: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="rename-file-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <form className="w-full max-w-md rounded-lg border border-white/15 bg-[#11151a] p-5 shadow-2xl" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
+        <div className="flex items-start justify-between gap-4"><div><p className="!m-0 font-mono text-[10px] uppercase tracking-widest text-white/40">Edit file</p><h3 id="rename-file-title" className="!mb-0 !mt-1 text-lg text-white">Rename display name</h3></div><button type="button" onClick={onClose} className="text-white/45 hover:text-white" aria-label="Close rename dialog"><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div>
+        <label className="mt-5 block text-sm text-white/60">Display name<input autoFocus value={value} maxLength={160} onChange={(event) => onChange(event.target.value)} className="mt-2 block w-full rounded border border-white/15 bg-white/[0.04] px-3 py-2.5 text-white outline-none focus:border-teal-200/60" /></label>
+        <p className="mt-2 text-xs text-white/35">This changes the name people see and download. The cloud object stays safely addressable.</p>
+        <div className="mt-5 flex justify-end gap-2 border-t border-white/10 pt-4"><button type="button" onClick={onClose} className="rounded border border-white/15 px-3 py-2 text-xs text-white/65 hover:text-white">Cancel</button><button type="submit" disabled={busy || !value.trim()} className="button-main !px-3 !py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Saving…" : "Save name"}</button></div>
+      </form>
     </div>
   );
 }
