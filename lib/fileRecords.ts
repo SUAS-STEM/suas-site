@@ -143,7 +143,7 @@ export function findFileRecordByHash(sha256: string, excludeName?: string) {
   const db = openDb();
   try {
     const row = db.prepare(`SELECT * FROM file_records
-      WHERE sha256 = ? AND cloud_status = 'uploaded' AND (? IS NULL OR name != ?)
+      WHERE sha256 = ? AND cloud_status IN ('uploaded', 'local') AND (? IS NULL OR name != ?)
       ORDER BY uploaded_at ASC LIMIT 1`).get(sha256, excludeName || null, excludeName || null) as Record<string, unknown> | undefined;
     return row ? mapRow(row) : null;
   } finally {

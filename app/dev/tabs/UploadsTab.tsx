@@ -12,15 +12,16 @@ type UploadedFile = {
   modifiedAt: string;
   uploadedAt: string;
   uploaderName: string;
-  cloudStatus: "local" | "pending" | "uploaded" | "failed" | "not_configured";
-  cloudError: string | null;
-  localAvailable: boolean;
+  status: "ready" | "pending" | "error";
   category: UploadCategory;
 };
 
 type StorageStatus = {
-  cloud: { configured: boolean; provider: string; used: number | null; limit: number | null; remaining: number | null; message: string | null };
-  local?: { enabled: boolean; used: number; limit: number | null; remaining: number | null; message: string | null };
+  configured: boolean;
+  used: number | null;
+  limit: number | null;
+  remaining: number | null;
+  message: string | null;
 };
 
 const CATEGORIES: Array<{ id: UploadCategory; label: string }> = [
@@ -30,9 +31,9 @@ const CATEGORIES: Array<{ id: UploadCategory; label: string }> = [
 ];
 
 function formatBytes(value: number) {
-  if (value >= 1024 * 1024 * 1024) return `${(value / 1024 / 1024 / 1024).toFixed(1)} GiB`;
-  if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
-  if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
+  if (value >= 1000 * 1000 * 1000) return `${(value / 1000 / 1000 / 1000).toFixed(1)} GB`;
+  if (value >= 1000 * 1000) return `${(value / 1000 / 1000).toFixed(1)} MB`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)} KB`;
   return `${value} B`;
 }
 
@@ -56,7 +57,6 @@ export default function UploadsTab() {
   const [renameTarget, setRenameTarget] = useState<UploadedFile | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renameBusy, setRenameBusy] = useState(false);
-  const [cacheBusyName, setCacheBusyName] = useState<string | null>(null);
   const refreshInFlight = useRef(false);
 
   const visibleFiles = useMemo(
@@ -180,24 +180,6 @@ export default function UploadsTab() {
     }
   }
 
-  async function toggleLocalCache(file: UploadedFile) {
-    if (cacheBusyName) return;
-    setCacheBusyName(file.name);
-    setError(null);
-    try {
-      const response = await fetch("/api/dev-files", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name, cacheLocal: !file.localAvailable }) });
-      const result = await response.json().catch(() => ({})) as { error?: string; file?: UploadedFile; storage?: StorageStatus };
-      if (!response.ok || !result.file) throw new Error(result.error || "Could not update Pi cache");
-      setFiles((current) => current.map((item) => item.name === result.file!.name ? result.file! : item));
-      if (result.storage) setStorage(result.storage);
-      setMessage(result.file.localAvailable ? "A local Pi copy is ready for faster access." : "Local Pi copy removed; the B2 copy is still safe.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update Pi cache");
-    } finally {
-      setCacheBusyName(null);
-    }
-  }
-
   return (
     <section aria-labelledby="files-heading" className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-4">
@@ -248,7 +230,7 @@ export default function UploadsTab() {
               <input id="dev-file-upload" className="sr-only" type="file" multiple disabled={busy} onChange={(event) => { void upload(event.target.files ?? []); event.currentTarget.value = ""; }} />
               <span className="material-symbols-outlined block text-2xl text-teal-200" aria-hidden="true">upload_file</span>
               <span className="mt-2 block text-sm font-medium text-white">Add to {CATEGORIES.find((item) => item.id === category)?.label}</span>
-              <span className="mt-1 block text-xs text-white/45">Drop files here or click to browse · streamed directly to {storage?.cloud.provider || "cloud storage"}</span>
+              <span className="mt-1 block text-xs text-white/45">Drop files here or click to browse · storage is managed automatically</span>
             </label>
           </div>
         </div>
@@ -267,16 +249,16 @@ export default function UploadsTab() {
         <div className="max-h-[42rem] overflow-y-auto pr-1">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {galleryFiles.map((file, index) => (
-            <GalleryCard key={file.name} file={file} index={index} onView={() => setViewerIndex(index)} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} onCache={toggleLocalCache} cacheBusy={cacheBusyName === file.name} />
+            <GalleryCard key={file.name} file={file} index={index} onView={() => setViewerIndex(index)} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} />
           ))}
           {visibleFiles.filter((file) => !file.type.startsWith("image/")).map((file) => (
-            <FileRow key={file.name} file={file} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} onCache={toggleLocalCache} cacheBusy={cacheBusyName === file.name} provider={storage?.cloud.provider || "cloud storage"} />
+            <FileRow key={file.name} file={file} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} />
           ))}
           </div>
         </div>
       ) : (
         <div className="max-h-[42rem] overflow-y-auto divide-y divide-white/10 border-y border-white/10 pr-1">
-          {visibleFiles.map((file) => <FileRow key={file.name} file={file} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} onCache={toggleLocalCache} cacheBusy={cacheBusyName === file.name} provider={storage?.cloud.provider || "cloud storage"} />)}
+          {visibleFiles.map((file) => <FileRow key={file.name} file={file} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} />)}
         </div>
       )}
 
@@ -298,13 +280,13 @@ export default function UploadsTab() {
         </div>
       )}
 
-      {propertiesFile && <PropertiesDialog file={propertiesFile} provider={storage?.cloud.provider || "cloud storage"} onClose={() => setPropertiesFile(null)} onRename={() => { setPropertiesFile(null); startRename(propertiesFile); }} />}
+      {propertiesFile && <PropertiesDialog file={propertiesFile} onClose={() => setPropertiesFile(null)} onRename={() => { setPropertiesFile(null); startRename(propertiesFile); }} />}
       {renameTarget && <RenameDialog value={renameValue} busy={renameBusy} onChange={setRenameValue} onClose={() => setRenameTarget(null)} onSubmit={() => void renameFile()} />}
     </section>
   );
 }
 
-function GalleryCard({ file, index, onView, onDelete, onRename, onProperties, onCache, cacheBusy }: { file: UploadedFile; index: number; onView: () => void; onDelete: (file: UploadedFile) => Promise<void>; onRename: (file: UploadedFile) => void; onProperties: (file: UploadedFile) => void; onCache: (file: UploadedFile) => Promise<void>; cacheBusy: boolean }) {
+function GalleryCard({ file, onView, onDelete, onRename, onProperties }: { file: UploadedFile; index: number; onView: () => void; onDelete: (file: UploadedFile) => Promise<void>; onRename: (file: UploadedFile) => void; onProperties: (file: UploadedFile) => void }) {
   return (
     <article className="overflow-hidden rounded border border-white/10 bg-white/[0.02] transition hover:border-white/30">
       <button type="button" onClick={onView} className="group block w-full text-left" aria-label={`View ${file.originalName}`}>
@@ -314,7 +296,6 @@ function GalleryCard({ file, index, onView, onDelete, onRename, onProperties, on
         <p className="min-w-0 flex-1 truncate text-xs text-white/75" title={file.originalName}>{file.originalName}</p>
         <button type="button" onClick={() => onProperties(file)} className="text-white/40 hover:text-white" title="File properties" aria-label={`Properties for ${file.originalName}`}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">info</span></button>
         <button type="button" onClick={() => onRename(file)} className="text-white/40 hover:text-white" title="Rename display name" aria-label={`Rename ${file.originalName}`}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">edit</span></button>
-        <button type="button" onClick={() => void onCache(file)} disabled={cacheBusy} className={`text-white/40 hover:text-white disabled:opacity-50 ${file.localAvailable ? "text-teal-200/80" : ""}`} title={file.localAvailable ? "Remove Pi copy" : "Keep a Pi copy"} aria-label={file.localAvailable ? `Remove Pi copy of ${file.originalName}` : `Keep a Pi copy of ${file.originalName}`}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">{cacheBusy ? "progress_activity" : file.localAvailable ? "offline_pin" : "cloud_download"}</span></button>
         <a href={fileUrl(file)} download className="text-white/40 hover:text-white" title="Download" aria-label={`Download ${file.originalName}`}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">download</span></a>
         <button type="button" onClick={() => void onDelete(file)} className="text-white/40 hover:text-red-200" title="Delete" aria-label={`Delete ${file.originalName}`}><span className="material-symbols-outlined text-[1rem]" aria-hidden="true">delete</span></button>
       </div>
@@ -323,7 +304,7 @@ function GalleryCard({ file, index, onView, onDelete, onRename, onProperties, on
   );
 }
 
-function FileRow({ file, onDelete, onRename, onProperties, onCache, cacheBusy, provider }: { file: UploadedFile; onDelete: (file: UploadedFile) => Promise<void>; onRename: (file: UploadedFile) => void; onProperties: (file: UploadedFile) => void; onCache: (file: UploadedFile) => Promise<void>; cacheBusy: boolean; provider: string }) {
+function FileRow({ file, onDelete, onRename, onProperties }: { file: UploadedFile; onDelete: (file: UploadedFile) => Promise<void>; onRename: (file: UploadedFile) => void; onProperties: (file: UploadedFile) => void }) {
   const image = file.type.startsWith("image/");
   const url = fileUrl(file);
   return (
@@ -333,18 +314,16 @@ function FileRow({ file, onDelete, onRename, onProperties, onCache, cacheBusy, p
         <p className="truncate text-sm text-white" title={file.originalName}>{file.originalName}</p>
         <p className="mt-0.5 truncate text-xs text-white/35">{formatBytes(file.size)} · {file.uploaderName} · {new Date(file.uploadedAt).toLocaleDateString()}</p>
       </div>
-      <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] sm:inline ${file.localAvailable ? "border-teal-200/20 text-teal-200" : file.cloudStatus === "failed" ? "border-red-200/20 text-red-200" : "border-white/10 text-white/35"}`} title={file.cloudError || undefined}>{file.localAvailable ? "Pi + B2" : file.cloudStatus === "uploaded" ? provider : file.cloudStatus === "pending" ? "Syncing" : file.cloudStatus === "failed" ? "Sync failed" : "Local"}</span>
+      {file.status !== "ready" && <span className={`hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] sm:inline ${file.status === "error" ? "border-red-200/20 text-red-200" : "border-white/10 text-white/35"}`}>{file.status === "pending" ? "Processing" : "Unavailable"}</span>}
       {image && <a href={url} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white" title="View" aria-label={`View ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">open_in_new</span></a>}
       <button type="button" onClick={() => onProperties(file)} className="text-white/40 hover:text-white" title="File properties" aria-label={`Properties for ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">info</span></button>
       <button type="button" onClick={() => onRename(file)} className="text-white/40 hover:text-white" title="Rename display name" aria-label={`Rename ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">edit</span></button>
-      <button type="button" onClick={() => void onCache(file)} disabled={cacheBusy} className={`text-white/40 hover:text-white disabled:opacity-50 ${file.localAvailable ? "text-teal-200/80" : ""}`} title={file.localAvailable ? "Remove Pi copy" : "Keep a Pi copy"} aria-label={file.localAvailable ? `Remove Pi copy of ${file.originalName}` : `Keep a Pi copy of ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">{cacheBusy ? "progress_activity" : file.localAvailable ? "offline_pin" : "cloud_download"}</span></button>
       <a href={url} download className="text-white/40 hover:text-white" title="Download" aria-label={`Download ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">download</span></a>
       <button type="button" onClick={() => void onDelete(file)} className="text-white/40 hover:text-red-200" title="Delete" aria-label={`Delete ${file.originalName}`}><span className="material-symbols-outlined text-[1.05rem]" aria-hidden="true">delete</span></button>
     </div>
   );
 }
-
-function PropertiesDialog({ file, provider, onClose, onRename }: { file: UploadedFile; provider: string; onClose: () => void; onRename: () => void }) {
+function PropertiesDialog({ file, onClose, onRename }: { file: UploadedFile; onClose: () => void; onRename: () => void }) {
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="file-properties-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <div className="w-full max-w-md rounded-lg border border-white/15 bg-[#11151a] p-5 shadow-2xl">
@@ -359,8 +338,7 @@ function PropertiesDialog({ file, provider, onClose, onRename }: { file: Uploade
           <Property label="Category" value={CATEGORIES.find((item) => item.id === file.category)?.label || file.category} />
           <Property label="Uploaded" value={new Date(file.uploadedAt).toLocaleString()} />
           <Property label="Last updated" value={new Date(file.modifiedAt).toLocaleString()} />
-          <Property label="Storage" value={file.cloudStatus === "uploaded" ? provider : file.cloudStatus} />
-          <Property label="Pi cache" value={file.localAvailable ? "Cached on Pi" : "B2 only"} />
+          <Property label="Status" value={file.status === "ready" ? "Available" : file.status === "pending" ? "Processing" : "Unavailable"} />
         </dl>
         <div className="mt-5 flex justify-end gap-2 border-t border-white/10 pt-4">
           <button type="button" onClick={onRename} className="button-main !px-3 !py-2 text-xs">Rename display name</button>
@@ -389,21 +367,15 @@ function RenameDialog({ value, busy, onChange, onClose, onSubmit }: { value: str
 }
 
 function StorageStatusView({ storage }: { storage: StorageStatus }) {
-  const cloudPercent = storage.cloud.limit && storage.cloud.used != null ? Math.min(100, storage.cloud.used / storage.cloud.limit * 100) : null;
-  return (
-    <div className="grid gap-3 md:grid-cols-2" aria-label="Storage status">
-      <QuotaCard label={`${storage.cloud.provider} cloud`} used={storage.cloud.used} limit={storage.cloud.limit} remaining={storage.cloud.remaining} percent={cloudPercent} message={storage.cloud.message || undefined} />
-      {storage.local && <QuotaCard label="Pi local cache" used={storage.local.used} limit={storage.local.limit} remaining={storage.local.remaining} percent={storage.local.limit ? storage.local.used / storage.local.limit * 100 : null} message={storage.local.message || undefined} />}
-    </div>
-  );
+  const percent = storage.limit && storage.used != null ? Math.min(100, storage.used / storage.limit * 100) : null;
+  return <QuotaCard label="Storage" used={storage.used} limit={storage.limit} remaining={storage.remaining} percent={percent} message={storage.message || undefined} />;
 }
-
 function QuotaCard({ label, used, limit, remaining, percent, message }: { label: string; used: number | null; limit: number | null; remaining: number | null; percent: number | null; message?: string }) {
   return (
     <div className="rounded border border-white/10 bg-white/[0.025] px-4 py-3">
       <div className="flex items-center justify-between gap-3 text-sm"><span className="text-white/65">{label}</span><span className="font-mono text-xs text-white/45">{remaining == null ? "Unavailable" : `${formatBytes(remaining)} remaining`}</span></div>
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><div className={`h-full rounded-full ${percent != null && percent >= 90 ? "bg-red-300" : "bg-teal-200"}`} style={{ width: `${percent ?? 0}%` }} /></div>
-      <p className="!m-0 mt-2 text-xs text-white/35">{used == null || limit == null ? message || "Waiting for a verified cloud connection." : `${formatBytes(used)} used of ${formatBytes(limit)}`}</p>
+      <p className="!m-0 mt-2 text-xs text-white/35">{used == null || limit == null ? message || "Storage status unavailable." : `${formatBytes(used)} used of ${formatBytes(limit)}`}</p>
     </div>
   );
 }

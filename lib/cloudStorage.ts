@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { updateCloudStatus, type FileRecord } from "@/lib/fileRecords";
 
 const execFileAsync = promisify(execFile);
+const GB = 1000 * 1000 * 1000;
 const GIB = 1024 * 1024 * 1024;
 let cachedStatus: { expiresAt: number; value: StorageStatus } | null = null;
 let reservedUploadBytes = 0;
@@ -57,6 +58,8 @@ function remotePath(record: Pick<FileRecord, "category" | "name">) {
 }
 
 function configuredCloudLimitBytes() {
+  const gb = Number(process.env.CLOUD_LIMIT_GB || 0);
+  if (Number.isFinite(gb) && gb > 0) return Math.floor(gb * GB);
   const gib = Number(process.env.CLOUD_LIMIT_GIB || process.env.TERABOX_CLOUD_LIMIT_GIB || 0);
   return Number.isFinite(gib) && gib > 0 ? Math.floor(gib * GIB) : null;
 }

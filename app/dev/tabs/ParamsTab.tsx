@@ -14,17 +14,16 @@ type Version = {
   notes: string | null;
   parameterCount: number;
   modifiedAt: string;
-  localAvailable: boolean;
-  cloudStatus: "uploaded" | "pending" | "failed" | "local" | "not_configured";
+  status: "ready" | "pending" | "error";
 };
 type Change = { name: string; from: string | null; to: string | null; change: "added" | "removed" | "changed" };
-type StorageStatus = { cloud: { provider: string; remaining: number | null }; local?: { remaining: number | null } };
+type StorageStatus = { configured: boolean; used: number | null; limit: number | null; remaining: number | null; message: string | null };
 
 function formatBytes(value: number | null) {
   if (value == null) return "—";
-  if (value >= 1024 * 1024 * 1024) return `${(value / 1024 / 1024 / 1024).toFixed(1)} GiB`;
-  if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
-  if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
+  if (value >= 1000 * 1000 * 1000) return `${(value / 1000 / 1000 / 1000).toFixed(1)} GB`;
+  if (value >= 1000 * 1000) return `${(value / 1000 / 1000).toFixed(1)} MB`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)} KB`;
   return `${value} B`;
 }
 
@@ -41,10 +40,6 @@ function notePreview(value: string) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 220);
-}
-
-function cloudStatusText(status: Version["cloudStatus"]) {
-  return { uploaded: "Uploaded to cloud", pending: "Uploading", failed: "Cloud upload failed", local: "Local only", not_configured: "Cloud not configured" }[status];
 }
 
 export default function ParamsTab() {
@@ -149,7 +144,7 @@ export default function ParamsTab() {
     <section aria-labelledby="params-heading" className="space-y-5 border-t border-white/10 pt-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><p className="!mb-2 font-mono text-xs uppercase tracking-widest text-white/40">Flight configuration</p><h2 id="params-heading" className="!mb-1 !mt-0 !text-left">ArduPilot parameters</h2><p className="!m-0 text-sm text-white/55">Upload named snapshots and see exactly what changed between them.</p></div>
-        {storage && <span className="text-xs text-white/40">{formatBytes(storage.cloud.remaining)} left in {storage.cloud.provider}</span>}
+        {storage && <span className="text-xs text-white/40">{formatBytes(storage.remaining)} storage remaining</span>}
       </div>
 
       <form onSubmit={upload} className="grid gap-3 rounded border border-white/10 bg-white/[0.025] p-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
@@ -191,7 +186,7 @@ function VersionRow({ version, onOpen, onEdit, onDelete }: { version: Version; o
 }
 
 function VersionDetailsDialog({ version, onClose, onEdit, onDelete }: { version: Version; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
-  return <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="param-version-details-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-white/15 bg-[#11151a] shadow-2xl"><div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4"><div className="min-w-0"><p className="!m-0 font-mono text-[10px] uppercase tracking-widest text-white/40">Parameter snapshot</p><h3 id="param-version-details-title" className="!mb-0 !mt-1 truncate text-lg text-white" title={version.versionName}>{version.versionName}</h3></div><button type="button" onClick={onClose} className="shrink-0 text-white/45 hover:text-white" aria-label="Close parameter details"><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div><div className="grid gap-3 px-5 py-4 sm:grid-cols-2"><VersionDetail label="Uploaded by" value={version.uploaderName} /><VersionDetail label="Uploaded" value={formatDate(version.uploadedAt)} /><VersionDetail label="Last updated" value={formatDate(version.modifiedAt)} /><VersionDetail label="File size" value={formatBytes(version.size)} /><VersionDetail label="Parameters" value={String(version.parameterCount)} /><VersionDetail label="Cloud status" value={cloudStatusText(version.cloudStatus)} /><VersionDetail label="Local cache" value={version.localAvailable ? "Available on Pi" : "Not cached locally"} /><VersionDetail label="Original filename" value={version.originalName} /></div><div className="mx-5 rounded border border-white/10 bg-white/[0.025] p-4"><p className="!mb-2 !mt-0 text-xs uppercase tracking-wider text-white/40">Notes</p>{version.notes ? <div className="prose prose-invert max-h-64 max-w-none overflow-y-auto text-sm text-white/75"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{version.notes}</ReactMarkdown></div> : <p className="!m-0 text-sm text-white/40">No notes for this snapshot.</p>}</div><div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-5 py-4"><a href={`/api/dev-params?name=${encodeURIComponent(version.name)}`} download={version.originalName} className="inline-flex items-center gap-1.5 rounded border border-white/15 px-3 py-2 text-xs text-white/70 hover:border-white/30 hover:text-white"><span className="material-symbols-outlined text-base" aria-hidden="true">download</span>Download snapshot</a><div className="flex gap-2"><button type="button" onClick={onEdit} className="rounded border border-white/15 px-3 py-2 text-xs text-white/70 hover:border-white/30 hover:text-white">Edit details</button><button type="button" onClick={onDelete} className="rounded border border-red-300/20 px-3 py-2 text-xs text-red-200/80 hover:border-red-300/40 hover:text-red-100">Delete</button></div></div></section></div>;
+  return <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="param-version-details-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-white/15 bg-[#11151a] shadow-2xl"><div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4"><div className="min-w-0"><p className="!m-0 font-mono text-[10px] uppercase tracking-widest text-white/40">Parameter snapshot</p><h3 id="param-version-details-title" className="!mb-0 !mt-1 truncate text-lg text-white" title={version.versionName}>{version.versionName}</h3></div><button type="button" onClick={onClose} className="shrink-0 text-white/45 hover:text-white" aria-label="Close parameter details"><span className="material-symbols-outlined" aria-hidden="true">close</span></button></div><div className="grid gap-3 px-5 py-4 sm:grid-cols-2"><VersionDetail label="Uploaded by" value={version.uploaderName} /><VersionDetail label="Uploaded" value={formatDate(version.uploadedAt)} /><VersionDetail label="Last updated" value={formatDate(version.modifiedAt)} /><VersionDetail label="File size" value={formatBytes(version.size)} /><VersionDetail label="Parameters" value={String(version.parameterCount)} /><VersionDetail label="Status" value={version.status === "ready" ? "Available" : version.status === "pending" ? "Processing" : "Unavailable"} /><VersionDetail label="Original filename" value={version.originalName} /></div><div className="mx-5 rounded border border-white/10 bg-white/[0.025] p-4"><p className="!mb-2 !mt-0 text-xs uppercase tracking-wider text-white/40">Notes</p>{version.notes ? <div className="prose prose-invert max-h-64 max-w-none overflow-y-auto text-sm text-white/75"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{version.notes}</ReactMarkdown></div> : <p className="!m-0 text-sm text-white/40">No notes for this snapshot.</p>}</div><div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-5 py-4"><a href={`/api/dev-params?name=${encodeURIComponent(version.name)}`} download={version.originalName} className="inline-flex items-center gap-1.5 rounded border border-white/15 px-3 py-2 text-xs text-white/70 hover:border-white/30 hover:text-white"><span className="material-symbols-outlined text-base" aria-hidden="true">download</span>Download snapshot</a><div className="flex gap-2"><button type="button" onClick={onEdit} className="rounded border border-white/15 px-3 py-2 text-xs text-white/70 hover:border-white/30 hover:text-white">Edit details</button><button type="button" onClick={onDelete} className="rounded border border-red-300/20 px-3 py-2 text-xs text-red-200/80 hover:border-red-300/40 hover:text-red-100">Delete</button></div></div></section></div>;
 }
 
 function VersionDetail({ label, value }: { label: string; value: string }) {
