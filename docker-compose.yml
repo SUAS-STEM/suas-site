@@ -9,6 +9,8 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env.local
       # Reuse the existing SUAS admin password/session mechanism. This file
