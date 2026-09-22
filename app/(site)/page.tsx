@@ -71,6 +71,19 @@ export default function Home() {
                     </div>
                 </div>
             </section>
+
+            <section className="w-full max-w-5xl mx-auto mt-16" aria-label="SUAS@STEM video">
+                <div className="aspect-video overflow-hidden rounded-xl border border-teal-300/20 bg-gray-900 shadow-[0_8px_40px_rgba(20,184,166,0.18)]">
+                    <iframe
+                        className="h-full w-full"
+                        src="https://www.youtube.com/embed/zpQUnOtP84c?mute=1"
+                        title="SUAS@STEM video"
+                        loading="lazy"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                    />
+                </div>
+            </section>
         </main>
     );
 }
