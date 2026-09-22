@@ -1,7 +1,29 @@
+"use client";
+
 import Link from "next/link";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 export default function Footer(): React.ReactElement {
+  const [serverDown, setServerDown] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 5000);
+
+    fetch(`/api/health?ts=${Date.now()}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => setServerDown(!response.ok))
+      .catch(() => setServerDown(true))
+      .finally(() => window.clearTimeout(timeout));
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, []);
+
   return (
     <footer className="w-full border-t border-gray-800 py-6 font-sans">
       <div className="max-w-6xl mx-auto px-4">
@@ -74,6 +96,14 @@ export default function Footer(): React.ReactElement {
             </a>
           </div> */}
         </div>
+        {serverDown ? (
+          <p
+            role="status"
+            className="mt-4 border-t border-white/10 pt-4 text-center text-xs text-amber-300/90"
+          >
+            The SUAS@STEM server is currently offline. Some live features may be unavailable.
+          </p>
+        ) : null}
       </div>
     </footer>
   );
