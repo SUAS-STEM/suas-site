@@ -9,7 +9,7 @@ type RouteContext = { params: Promise<{ path: string[] }> };
 
 function forwardedHeaders(request: NextRequest): Headers {
   const headers = new Headers();
-  for (const name of ["authorization", "x-storage-token", "content-type", "content-length", "if-none-match"]) {
+  for (const name of ["authorization", "x-storage-token", "content-type", "content-length", "if-none-match", "x-part-sha256"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
@@ -32,7 +32,9 @@ async function forward(request: NextRequest, context: RouteContext) {
 
   const upstreamPath = path[0] === "_jobs" && path.length === 2
     ? `/v1/jobs/${encodeURIComponent(path[1])}`
-    : `/v1/files/${path.map((segment) => encodeURIComponent(segment)).join("/")}`;
+    : path[0] === "_uploads"
+      ? `/v1/uploads${path.length > 1 ? `/${path.slice(1).map((segment) => encodeURIComponent(segment)).join("/")}` : ""}`
+      : `/v1/files/${path.map((segment) => encodeURIComponent(segment)).join("/")}`;
   const upstream = await fetch(`${STORAGE_ORIGIN}${upstreamPath}${request.nextUrl.search}`, {
     method: request.method,
     headers: forwardedHeaders(request),
@@ -44,8 +46,10 @@ async function forward(request: NextRequest, context: RouteContext) {
   const headers = responseHeaders(upstream);
   if (upstream.headers.get("content-type")?.includes("application/json")) {
     const payload = await upstream.json() as Record<string, unknown>;
-    for (const key of ["statusUrl"] as const) {
-      if (typeof payload[key] === "string" && payload[key].startsWith("/v1/jobs/")) payload[key] = `/storage/_jobs/${payload[key].slice("/v1/jobs/".length)}`;
+    for (const key of ["statusUrl", "uploadStatusUrl", "completeUrl", "partUrlTemplate"] as const) {
+      if (typeof payload[key] !== "string") continue;
+      if (payload[key].startsWith("/v1/jobs/")) payload[key] = `/storage/_jobs/${payload[key].slice("/v1/jobs/".length)}`;
+      else if (payload[key].startsWith("/v1/uploads/")) payload[key] = `/storage/_uploads/${payload[key].slice("/v1/uploads/".length)}`;
     }
     if (typeof payload.url === "string" && payload.url.startsWith("/v1/files/")) payload.url = `/storage/${payload.url.slice("/v1/files/".length)}`;
     headers.delete("content-length");
@@ -67,5 +71,13 @@ export async function HEAD(request: NextRequest, context: RouteContext) {
 }
 
 export async function PUT(request: NextRequest, context: RouteContext) {
+  return forward(request, context);
+}
+
+export async function POST(request: NextRequest, context: RouteContext) {
+  return forward(request, context);
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
   return forward(request, context);
 }

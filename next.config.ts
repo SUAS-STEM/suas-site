@@ -4,6 +4,12 @@ const nextConfig: NextConfig = {
   output: "standalone",
   devIndicators: false,
   allowedDevOrigins: ["dev.suasstem.org"],
+  experimental: {
+    // /storage resumable uploads use 64 MiB parts. Next otherwise truncates
+    // proxied request bodies at its 10 MiB default before the route handler
+    // can stream them to release-store.
+    proxyClientMaxBodySize: "90mb",
+  },
   async headers() {
     return [
       {
