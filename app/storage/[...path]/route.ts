@@ -47,6 +47,7 @@ async function forward(request: NextRequest, context: RouteContext) {
     for (const key of ["statusUrl"] as const) {
       if (typeof payload[key] === "string" && payload[key].startsWith("/v1/jobs/")) payload[key] = `/storage/_jobs/${payload[key].slice("/v1/jobs/".length)}`;
     }
+    if (typeof payload.url === "string" && payload.url.startsWith("/v1/files/")) payload.url = `/storage/${payload.url.slice("/v1/files/".length)}`;
     headers.delete("content-length");
     headers.set("content-type", "application/json; charset=utf-8");
     return new NextResponse(JSON.stringify(payload), { status: upstream.status, headers });
