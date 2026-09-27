@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import { cookies } from "next/headers";
 import { getDeviceAccess, isPermanentAdmin } from "@/lib/devAccess";
+import { userFromSessionToken } from "@/lib/authCore";
 
 const COOKIE = "dev_auth";
 const DEVICE_COOKIE = "dev_device";
@@ -21,6 +22,8 @@ function expectedAdminToken(deviceId: string): string | null {
 
 export async function isDevAuthorized(): Promise<boolean> {
   const jar = await cookies();
+  const sharedUser = userFromSessionToken(jar.get("suas_session")?.value);
+  if (sharedUser?.status === "approved") return true;
   const deviceId = jar.get(DEVICE_COOKIE)?.value;
   const expected = expectedDevToken(deviceId);
   if (!expected) return false;
@@ -32,6 +35,8 @@ export async function isDevAuthorized(): Promise<boolean> {
 
 export async function isDevAdmin(): Promise<boolean> {
   const jar = await cookies();
+  const sharedUser = userFromSessionToken(jar.get("suas_session")?.value);
+  if (sharedUser?.status === "approved") return sharedUser.role === "admin";
   const deviceId = jar.get(DEVICE_COOKIE)?.value;
   const expected = expectedDevToken(deviceId);
   const expectedAdmin = deviceId ? expectedAdminToken(deviceId) : null;
@@ -44,6 +49,8 @@ export async function isDevAdmin(): Promise<boolean> {
 
 export async function currentDevIdentity() {
   const jar = await cookies();
+  const sharedUser = userFromSessionToken(jar.get("suas_session")?.value);
+  if (sharedUser) return { id: sharedUser.id, name: sharedUser.displayName, username: sharedUser.username, role: sharedUser.role };
   const deviceId = jar.get(DEVICE_COOKIE)?.value || "admin";
   const request = getDeviceAccess(deviceId);
   const adminToken = expectedAdminToken(deviceId);

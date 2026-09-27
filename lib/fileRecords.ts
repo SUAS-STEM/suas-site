@@ -18,6 +18,7 @@ export type FileRecord = {
   modifiedAt: string;
   uploadedAt: string;
   category: UploadCategory;
+  folderPath: string;
   uploaderId: string;
   uploaderName: string;
   sha256: string | null;
@@ -47,6 +48,7 @@ function openDb() {
       modified_at TEXT NOT NULL,
       uploaded_at TEXT NOT NULL,
       category TEXT NOT NULL,
+      folder_path TEXT NOT NULL DEFAULT '',
       uploader_id TEXT NOT NULL,
       uploader_name TEXT NOT NULL,
       sha256 TEXT,
@@ -62,6 +64,15 @@ function openDb() {
     )
   `);
   try { db.exec("ALTER TABLE file_records ADD COLUMN sha256 TEXT"); } catch { /* Column already exists on upgraded databases. */ }
+  try { db.exec("ALTER TABLE file_records ADD COLUMN folder_path TEXT NOT NULL DEFAULT ''"); } catch { /* Column already exists on upgraded databases. */ }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS file_folders (
+      category TEXT NOT NULL,
+      path TEXT COLLATE NOCASE NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (category, path)
+    )
+  `);
   return db;
 }
 
@@ -75,6 +86,7 @@ function mapRow(row: Record<string, unknown>): FileRecord {
     modifiedAt: String(row.modified_at),
     uploadedAt: String(row.uploaded_at),
     category: isUploadCategory(category) ? category : "work",
+    folderPath: String(row.folder_path || ""),
     uploaderId: String(row.uploader_id),
     uploaderName: String(row.uploader_name),
     sha256: row.sha256 ? String(row.sha256) : null,
@@ -88,14 +100,15 @@ export function saveFileRecord(record: FileRecord) {
   try {
     db.prepare(`
       INSERT INTO file_records
-        (name, original_name, size, type, modified_at, uploaded_at, category, uploader_id, uploader_name, sha256, cloud_status, cloud_error)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (name, original_name, size, type, modified_at, uploaded_at, category, folder_path, uploader_id, uploader_name, sha256, cloud_status, cloud_error)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(name) DO UPDATE SET
         original_name = excluded.original_name,
         size = excluded.size,
         type = excluded.type,
         modified_at = excluded.modified_at,
         category = excluded.category,
+        folder_path = excluded.folder_path,
         uploader_id = excluded.uploader_id,
         uploader_name = excluded.uploader_name,
         sha256 = excluded.sha256,
@@ -109,12 +122,49 @@ export function saveFileRecord(record: FileRecord) {
       record.modifiedAt,
       record.uploadedAt,
       record.category,
+      record.folderPath,
       record.uploaderId,
       record.uploaderName,
       record.sha256,
       record.cloudStatus,
       record.cloudError,
     );
+  } finally {
+    db.close();
+  }
+}
+
+export function listFileFolders(category: UploadCategory) {
+  const db = openDb();
+  try {
+    return (db.prepare("SELECT path FROM file_folders WHERE category = ? ORDER BY path COLLATE NOCASE ASC").all(category) as Array<{ path: string }>).map((row) => row.path);
+  } finally {
+    db.close();
+  }
+}
+
+export function fileFolderExists(category: UploadCategory, folderPath: string) {
+  if (!folderPath) return true;
+  const db = openDb();
+  try {
+    return Boolean(db.prepare("SELECT 1 FROM file_folders WHERE category = ? AND path = ?").get(category, folderPath));
+  } finally {
+    db.close();
+  }
+}
+
+export function createFileFolder(category: UploadCategory, folderPath: string) {
+  const parentPath = folderPath.includes("/") ? folderPath.slice(0, folderPath.lastIndexOf("/")) : "";
+  const db = openDb();
+  try {
+    if (parentPath && !db.prepare("SELECT 1 FROM file_folders WHERE category = ? AND path = ?").get(category, parentPath)) return false;
+    try {
+      db.prepare("INSERT INTO file_folders (category, path, created_at) VALUES (?, ?, ?)").run(category, folderPath, new Date().toISOString());
+      return true;
+    } catch (cause) {
+      if (["SQLITE_CONSTRAINT_PRIMARYKEY", "SQLITE_CONSTRAINT_UNIQUE"].includes((cause as { code?: string }).code || "")) return false;
+      throw cause;
+    }
   } finally {
     db.close();
   }
@@ -139,12 +189,13 @@ export function getFileRecord(name: string) {
   }
 }
 
-export function findFileRecordByHash(sha256: string, excludeName?: string) {
+export function findFileRecordByHash(sha256: string, excludeName: string | undefined, category: UploadCategory, folderPath: string) {
   const db = openDb();
   try {
     const row = db.prepare(`SELECT * FROM file_records
       WHERE sha256 = ? AND cloud_status IN ('uploaded', 'local') AND (? IS NULL OR name != ?)
-      ORDER BY uploaded_at ASC LIMIT 1`).get(sha256, excludeName || null, excludeName || null) as Record<string, unknown> | undefined;
+        AND category = ? AND folder_path = ?
+      ORDER BY uploaded_at ASC LIMIT 1`).get(sha256, excludeName || null, excludeName || null, category, folderPath) as Record<string, unknown> | undefined;
     return row ? mapRow(row) : null;
   } finally {
     db.close();

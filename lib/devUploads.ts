@@ -5,11 +5,11 @@ function positiveLimit(name: string, fallback: number) {
   return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
 }
 
-export const MAX_UPLOAD_FILE_BYTES = positiveLimit("SUAS_MAX_UPLOAD_FILE_BYTES", 2 * 1024 * 1024 * 1024);
+export const MAX_UPLOAD_FILE_BYTES = positiveLimit("SUAS_MAX_UPLOAD_FILE_BYTES", 20 * 1000 * 1000 * 1000);
 export const MAX_UPLOAD_REQUEST_BYTES = positiveLimit("SUAS_MAX_UPLOAD_REQUEST_BYTES", 4 * 1024 * 1024 * 1024);
 export const MAX_UPLOAD_FILES = positiveLimit("SUAS_MAX_UPLOAD_FILES", 20);
 
-export const UPLOAD_CATEGORIES = ["work", "thirdparty", "gallery", "params"] as const;
+export const UPLOAD_CATEGORIES = ["work", "media", "thirdparty", "gallery", "params"] as const;
 export type UploadCategory = (typeof UPLOAD_CATEGORIES)[number];
 
 export function isUploadCategory(value: string | null | undefined): value is UploadCategory {
@@ -54,6 +54,14 @@ export function mimeTypeForName(name: string) {
     ".png": "image/png",
     ".svg": "image/svg+xml",
     ".webp": "image/webp",
+    ".avi": "video/x-msvideo",
+    ".m4v": "video/x-m4v",
+    ".mkv": "video/x-matroska",
+    ".mov": "video/quicktime",
+    ".mp4": "video/mp4",
+    ".mpeg": "video/mpeg",
+    ".mpg": "video/mpeg",
+    ".webm": "video/webm",
     ".pdf": "application/pdf",
     ".csv": "text/csv; charset=utf-8",
     ".json": "application/json",

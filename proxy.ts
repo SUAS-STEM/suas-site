@@ -5,8 +5,9 @@ const DEV_HOST = "dev.suasstem.org";
 const DEV_ORIGIN = `https://${DEV_HOST}`;
 const COOKIE = "dev_auth";
 const DEVICE_COOKIE = "dev_device";
+const SHARED_COOKIE = "suas_auth";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 365 * 10;
-const PROTECTED_PREFIXES = ["/dev", "/api/wiki", "/api/links", "/api/dev-files"];
+const PROTECTED_PREFIXES = ["/dev", "/api/wiki", "/api/links", "/api/dev-files", "/api/dev-sitl", "/api/sitl-access", "/api/sitl-connect"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
@@ -37,6 +38,34 @@ function setAuthCookies(response: NextResponse, token: string, deviceId: string)
   response.cookies.set(DEVICE_COOKIE, deviceId, cookieOptions);
 }
 
+async function verifySharedCookie(value: string | undefined): Promise<boolean> {
+  if (!value) return false;
+  const secret = process.env.AUTH_SECRET || process.env.PASSWORD;
+  if (!secret) return false;
+  const [payload, signature] = value.split(".");
+  if (!payload || !signature) return false;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+  const decode = (encoded: string) => {
+    const normalized = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const binary = atob(padded);
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  };
+  let bytes: Uint8Array;
+  try {
+    bytes = decode(signature);
+  } catch {
+    return false;
+  }
+  if (!await crypto.subtle.verify("HMAC", key, bytes as BufferSource, new TextEncoder().encode(payload) as BufferSource)) return false;
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(decode(payload))) as { exp?: number };
+    return typeof parsed.exp === "number" && parsed.exp > Date.now();
+  } catch {
+    return false;
+  }
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
   const password = process.env.PASSWORD;
@@ -52,7 +81,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL(pathname + req.nextUrl.search, DEV_ORIGIN));
   }
 
-  if ((pathname.startsWith("/dev-login") || pathname.startsWith("/api/dev-auth")) && !isDevHost && !isLocalPreview) {
+  if ((pathname.startsWith("/dev-login") || pathname.startsWith("/dev-register") || pathname.startsWith("/api/dev-auth") || pathname.startsWith("/api/suas-auth")) && !isDevHost && !isLocalPreview) {
     if (pathname.startsWith("/api/")) return new NextResponse("Not Found", { status: 404 });
     return NextResponse.redirect(new URL(pathname + req.nextUrl.search, DEV_ORIGIN));
   }
@@ -81,7 +110,7 @@ export async function proxy(req: NextRequest) {
     return res;
   }
 
-  if (pathname.startsWith("/dev-login") || pathname.startsWith("/api/dev-auth")) {
+  if (pathname.startsWith("/dev-login") || pathname.startsWith("/dev-register") || pathname.startsWith("/api/dev-auth") || pathname.startsWith("/api/suas-auth")) {
     return NextResponse.next();
   }
 
@@ -103,6 +132,9 @@ export async function proxy(req: NextRequest) {
 
   const token = req.cookies.get(COOKIE)?.value;
   const deviceId = req.cookies.get(DEVICE_COOKIE)?.value;
+  if (await verifySharedCookie(req.cookies.get(SHARED_COOKIE)?.value)) {
+    return NextResponse.next();
+  }
   const expected = deviceId ? await makeToken(password, deviceId) : "";
   if (token && deviceId && token === expected) {
     const response = NextResponse.next();

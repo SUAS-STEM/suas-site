@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingExcludes: {
+    "/*": ["./current/**/*", "./releases/**/*", "./data/**/*"],
+  },
   devIndicators: false,
   allowedDevOrigins: ["dev.suasstem.org"],
   async headers() {

@@ -6,6 +6,7 @@ import AccessRequests from "./tabs/AccessRequests";
 import LinksTab from "./tabs/LinksTab";
 import ParamsTab from "./tabs/ParamsTab";
 import SsgcsTab from "./tabs/SsgcsTab";
+import SitlTab from "./tabs/SitlTab";
 import UploadsTab from "./tabs/UploadsTab";
 
 export default function DevPage() {
@@ -13,6 +14,7 @@ export default function DevPage() {
   const panels = [
     { id: "files", label: "Files", icon: "folder" },
     { id: "params", label: "Parameters", icon: "tune" },
+    { id: "sitl", label: "SITL", icon: "flight_takeoff" },
     { id: "ssgcs", label: "SSGCS", icon: "download" },
     { id: "links", label: "Links", icon: "link" },
     { id: "access", label: "Access", icon: "group" },
@@ -29,6 +31,7 @@ export default function DevPage() {
         </nav>
         {activePanel === "files" && <UploadsTab />}
         {activePanel === "params" && <ParamsTab />}
+        {activePanel === "sitl" && <SitlTab />}
         {activePanel === "ssgcs" && <SsgcsTab />}
         {activePanel === "links" && <LinksTab />}
         {activePanel === "access" && <AccessRequests />}

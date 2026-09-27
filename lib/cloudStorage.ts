@@ -38,7 +38,7 @@ export function releaseCloudUpload(bytes: number) {
 }
 
 export function cloudProviderName() {
-  return process.env.CLOUD_PROVIDER?.trim() || "TeraBox";
+  return process.env.CLOUD_PROVIDER?.trim() || "Backblaze B2";
 }
 
 function remoteName() {

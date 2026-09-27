@@ -1,8 +1,9 @@
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { currentDevIdentity, isDevAuthorized } from "@/lib/devAdminAuth";
-import { deleteFileRecord, findFileRecordByHash, getFileRecord, listFileRecords, renameFileRecord, saveFileRecord, updateFileHash, type FileRecord } from "@/lib/fileRecords";
+import { deleteFileRecord, fileFolderExists, findFileRecordByHash, getFileRecord, listFileRecords, renameFileRecord, saveFileRecord, updateFileHash, type FileRecord } from "@/lib/fileRecords";
 import { removeLocalCache } from "@/lib/localCache";
+import { deleteFileThumbnail } from "@/lib/fileThumbnails";
 import { deleteStoredFile, getTieredStorageStatus, releaseTieredUploads, reserveTieredUploads, storeStreamWithHash, streamStoredFile } from "@/lib/tieredStorage";
 import {
   cleanOriginalName,
@@ -16,6 +17,7 @@ import {
   storedFileName,
   type UploadCategory,
 } from "@/lib/devUploads";
+import { isValidFolderPath } from "@/lib/devFolders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +38,7 @@ function publicFile(record: FileRecord): PublicFile {
     modifiedAt: record.modifiedAt,
     uploadedAt: record.uploadedAt,
     category: record.category,
+    folderPath: record.folderPath,
     uploaderId: record.uploaderId,
     uploaderName: record.uploaderName,
     sha256: record.sha256,
@@ -74,7 +77,8 @@ export async function GET(req: NextRequest) {
     const stored = streamStoredFile(record);
     if (!stored) return NextResponse.json({ error: "Stored file is temporarily unavailable." }, { status: 503 });
     const body = Readable.toWeb(stored.remoteStream) as unknown as ReadableStream;
-    return new NextResponse(body, { headers: responseHeaders(record, record.type.startsWith("image/"), record.size) });
+    const inline = record.type.startsWith("image/") || record.type.startsWith("video/");
+    return new NextResponse(body, { headers: responseHeaders(record, inline, record.size) });
   }
   return NextResponse.json({ files: listFiles(), storage: await storagePayload() }, { headers: { "Cache-Control": "private, no-store" } });
 }
@@ -90,6 +94,10 @@ export async function POST(req: NextRequest) {
   const form = await req.formData();
   const categoryValue = form.get("category");
   const category: UploadCategory = typeof categoryValue === "string" && isUploadCategory(categoryValue) ? categoryValue : "work";
+  const folderValue = form.get("folderPath");
+  const folderPath = typeof folderValue === "string" ? folderValue : "";
+  if (!isValidFolderPath(folderPath)) return NextResponse.json({ error: "Invalid folder path" }, { status: 400 });
+  if (!fileFolderExists(category, folderPath)) return NextResponse.json({ error: "Folder not found" }, { status: 404 });
   const files = form.getAll("files").filter((value): value is File => value instanceof File);
   if (files.length === 0) return NextResponse.json({ error: "Choose at least one file" }, { status: 400 });
   if (files.length > MAX_UPLOAD_FILES) return NextResponse.json({ error: `You can upload at most ${MAX_UPLOAD_FILES} files at a time` }, { status: 413 });
@@ -118,6 +126,7 @@ export async function POST(req: NextRequest) {
         modifiedAt: timestamp,
         uploadedAt: timestamp,
         category,
+        folderPath,
         uploaderId: identity.id,
         uploaderName: identity.name,
         sha256: null,
@@ -131,7 +140,7 @@ export async function POST(req: NextRequest) {
       if (result.status === "failed" || result.status === "not_configured") {
         return NextResponse.json({ ok: false, files: uploaded, duplicates, storage: await storagePayload(), error: `Could not store ${file.name}.` }, { status: 502 });
       }
-      const duplicate = result.sha256 ? findFileRecordByHash(result.sha256, name) : null;
+      const duplicate = result.sha256 ? findFileRecordByHash(result.sha256, name, record.category, record.folderPath) : null;
       if (duplicate) {
         const removed = await deleteStoredFile(saved);
         if (removed) {
@@ -181,6 +190,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Could not delete the stored file." }, { status: 502 });
   }
   await removeLocalCache(record);
+  await deleteFileThumbnail(record.name);
   deleteFileRecord(record.name);
   return NextResponse.json({ ok: true, storage: await storagePayload() });
 }

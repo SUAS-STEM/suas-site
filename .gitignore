@@ -49,3 +49,5 @@ next-env.d.ts
 # docker secrets / local data
 /.secrets
 /data
+/current
+/releases/

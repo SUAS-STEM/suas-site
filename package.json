@@ -7,8 +7,8 @@
     "predev": "npm run fetch:internal && npm run gallery:manifest",
     "prebuild": "npm run fetch:internal && npm run gallery:manifest",
     "dev": "next dev",
-    "build": "next build",
-    "postbuild": "rm -rf .next/standalone/public .next/standalone/.next/static && cp -r public .next/standalone/public && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/static",
+    "build": "next build --webpack",
+    "postbuild": "rm -rf .next/standalone/public .next/standalone/.next/static && cp -r public .next/standalone/public && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/static && cp .next/standalone/server.js .next/standalone/next-server.js && cp gateway-server.js .next/standalone/server.js",
     "start": "next start",
     "lint": "eslint",
     "gallery:manifest": "node scripts/generate-gallery-manifest.mjs"

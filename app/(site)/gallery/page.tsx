@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     DURABLE_GALLERY_BASE,
     GALLERY_PHOTOS,
@@ -34,6 +34,8 @@ export default function GalleryPage() {
     const [isFullscreenMode, setIsFullscreenMode] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [switchClass, setSwitchClass] = useState("");
+    const [currentImageLoaded, setCurrentImageLoaded] = useState(false);
+    const prefetchedFullscreenImages = useRef<HTMLImageElement[]>([]);
 
     useEffect(() => {
         if (!isFullscreenMode) return;
@@ -41,9 +43,11 @@ export default function GalleryPage() {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "ArrowRight") {
                 setSwitchClass("gallery-switch-next-in");
+                setCurrentImageLoaded(false);
                 setCurrentIndex((prev) => (prev + 1) % galleryPhotos.length);
             } else if (event.key === "ArrowLeft") {
                 setSwitchClass("gallery-switch-prev-in");
+                setCurrentImageLoaded(false);
                 setCurrentIndex((prev) => (prev - 1 + galleryPhotos.length) % galleryPhotos.length);
             } else if (event.key === "Escape") {
                 setIsFullscreenMode(false);
@@ -57,40 +61,45 @@ export default function GalleryPage() {
     const openFullscreenAt = (index: number) => {
         setSwitchClass("");
         setCurrentIndex(index);
+        setCurrentImageLoaded(false);
         setIsFullscreenMode(true);
     };
 
     const showNext = () => {
         if (galleryPhotos.length <= 1) return;
         setSwitchClass("gallery-switch-next-in");
+        setCurrentImageLoaded(false);
         setCurrentIndex((prev) => (prev + 1) % galleryPhotos.length);
     };
 
     const showPrevious = () => {
         if (galleryPhotos.length <= 1) return;
         setSwitchClass("gallery-switch-prev-in");
+        setCurrentImageLoaded(false);
         setCurrentIndex((prev) => (prev - 1 + galleryPhotos.length) % galleryPhotos.length);
     };
 
-    // Preload 6 next and 6 previous images. Should be a balance of performance and memory usage.
-    const cacheSize = 2;
-    const preloadIndices =
-        galleryPhotos.length > 1
-            ? Array.from(
-                  new Set([
-                      ...Array.from(
-                          { length: Math.min(cacheSize, galleryPhotos.length - 1) },
-                          (_, offset) => (currentIndex + offset + 1) % galleryPhotos.length,
-                      ),
-                      ...Array.from(
-                          { length: Math.min(cacheSize, galleryPhotos.length - 1) },
-                          (_, offset) =>
-                              (currentIndex - (offset + 1) + galleryPhotos.length) %
-                              galleryPhotos.length,
-                      ),
-                  ]),
-              )
-            : [];
+    // Do not compete with the currently opened full-resolution image. Once it
+    // has loaded, quietly fetch only the immediate neighbors for fast arrow-key
+    // navigation. The grid itself always stays thumbnail-only.
+    useEffect(() => {
+        prefetchedFullscreenImages.current = [];
+        if (!isFullscreenMode || !currentImageLoaded || galleryPhotos.length < 2) return;
+        const timer = window.setTimeout(() => {
+            const indices = [
+                (currentIndex + 1) % galleryPhotos.length,
+                (currentIndex - 1 + galleryPhotos.length) % galleryPhotos.length,
+            ];
+            prefetchedFullscreenImages.current = Array.from(new Set(indices)).map((index) => {
+                const image = new window.Image();
+                image.decoding = "async";
+                image.fetchPriority = "low";
+                image.src = galleryPhotos[index];
+                return image;
+            });
+        }, 250);
+        return () => window.clearTimeout(timer);
+    }, [currentImageLoaded, currentIndex, galleryPhotos, isFullscreenMode]);
 
     return (
         <main className="text-white font-sans py-8">
@@ -100,7 +109,10 @@ export default function GalleryPage() {
                     <div className="mb-6 flex justify-center">
                         <button
                             type="button"
-                            onClick={() => setIsFullscreenMode((prev) => !prev)}
+                            onClick={() => {
+                                setCurrentImageLoaded(false);
+                                setIsFullscreenMode((prev) => !prev);
+                            }}
                             className="button-main"
                         >
                             <img
@@ -166,30 +178,14 @@ export default function GalleryPage() {
                                         onError={(e) => {
                                             useDurableFallback(e, galleryPhotos[currentIndex] || "/logo.png");
                                         }}
+                                        onLoad={() => setCurrentImageLoaded(true)}
                                         width="1200"
                                         height="900"
                                         loading="eager"
+                                        fetchPriority="high"
                                         decoding="async"
                                     />
                                 </div>
-                                {/* Used as a cache to have the browser preload images before they're clicked. */}
-                                {preloadIndices.length > 0 && (
-                                    <div className="hidden" aria-hidden="true">
-                                        {preloadIndices.map((index) => (
-                                            <img
-                                                key={`preload-${index}`}
-                                                src={galleryPhotos[index]}
-                                                alt=""
-                                                width="1200"
-                                                height="900"
-                                                loading="eager"
-                                                fetchPriority="low"
-                                                decoding="async"
-                                                onError={(e) => useDurableFallback(e, galleryPhotos[index])}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         </div>
                     ) : (
@@ -200,6 +196,7 @@ export default function GalleryPage() {
                                     type="button"
                                     onClick={() => openFullscreenAt(idx)}
                                     className="bg-white border-1 cursor-pointer border-white rounded overflow-hidden shadow-sm text-left"
+                                    style={{ contentVisibility: "auto", containIntrinsicSize: "400px 300px" }}
                                 >
                                     <img
                                         src={galleryThumbnails[idx] || src}
@@ -210,7 +207,8 @@ export default function GalleryPage() {
                                         }}
                                         width="400"
                                         height="300"
-                                        loading="lazy"
+                                        loading={idx < 6 ? "eager" : "lazy"}
+                                        fetchPriority={idx < 6 ? "high" : "low"}
                                         decoding="async"
                                     />
                                 </button>

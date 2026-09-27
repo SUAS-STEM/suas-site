@@ -96,9 +96,22 @@ export async function getLocalStorageStatus(): Promise<LocalStorageStatus> {
 
 export async function getTieredStorageStatus(): Promise<TieredStorageStatus> {
   const [{ cloud }, local] = await Promise.all([getCloudStorageStatus(), getLocalStorageStatus()]);
-  const limit = cloud.limit != null && local.limit != null ? cloud.limit + local.limit : null;
-  const used = cloud.used != null ? cloud.used + local.used : null;
-  const remaining = cloud.remaining != null && local.remaining != null ? cloud.remaining + local.remaining : null;
+  const remoteNotConfigured = cloud.message?.includes("is not configured") === true;
+  const limit = remoteNotConfigured
+    ? local.limit
+    : cloud.limit != null && local.limit != null
+      ? cloud.limit + local.limit
+      : null;
+  const used = remoteNotConfigured
+    ? local.used
+    : cloud.used != null
+      ? cloud.used + local.used
+      : null;
+  const remaining = remoteNotConfigured
+    ? local.remaining
+    : cloud.remaining != null && local.remaining != null
+      ? cloud.remaining + local.remaining
+      : null;
   const configured = cloud.configured || local.enabled;
   return {
     cloud,
