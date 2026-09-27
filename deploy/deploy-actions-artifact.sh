@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo="SUAS-STEM/suas-site"
-workflow="build-pi.yml"
-branch="master"
+source_repo="SUAS-STEM/suas-site"
+build_repo="eschan145/suas-site-builds"
+workflow="build.yml"
+source_branch="master"
+channel="prod"
 root="/home/pi/suas-site"
 deploy_root="/home/pi/suas-site-deploy"
 releases="$deploy_root/releases"
@@ -13,13 +15,25 @@ compose="$root/deploy/docker-compose.actions.yml"
 
 mkdir -p "$releases"
 
-run_json="$(gh run list --repo "$repo" --workflow "$workflow" --branch "$branch" --status success --limit 1 --json databaseId,headSha)"
-run_id="$(printf '%s' "$run_json" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["databaseId"] if d else "")')"
-sha="$(printf '%s' "$run_json" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["headSha"] if d else "")')"
-[[ -n "$run_id" && -n "$sha" ]] || { echo "No successful Pi build found" >&2; exit 1; }
+sha="$(gh api "repos/${source_repo}/commits/${source_branch}" --jq .sha)"
+[[ -n "$sha" ]] || { echo "Could not resolve ${source_repo}@${source_branch}" >&2; exit 1; }
 
 if [[ -f "$state_file" && "$(cat "$state_file")" == "$sha" ]]; then
   echo "Already deployed $sha"
+  exit 0
+fi
+
+runs_json="$(gh run list --repo "$build_repo" --workflow "$workflow" --limit 40 --json databaseId,displayTitle,status,conclusion)"
+match="$(printf '%s' "$runs_json" | SOURCE_SHA="$sha" CHANNEL="$channel" python3 -c 'import json,os,sys; title=f"SUAS {os.environ["CHANNEL"]} {os.environ["SOURCE_SHA"]}"; rows=[r for r in json.load(sys.stdin) if r.get("displayTitle")==title]; ok=next((r for r in rows if r.get("status")=="completed" and r.get("conclusion")=="success"),None); active=next((r for r in rows if r.get("status") in ("queued","in_progress","waiting","pending")),None); r=ok or active; print((str(r["databaseId"])+"\t"+r["status"]+"\t"+str(r.get("conclusion") or "")) if r else "")')"
+
+if [[ -z "$match" ]]; then
+  gh workflow run "$workflow" --repo "$build_repo" --ref main -f source_ref="$sha" -f channel="$channel"
+  echo "Dispatched private build for $channel $sha"
+  exit 0
+fi
+IFS=$'\t' read -r run_id run_status run_conclusion <<< "$match"
+if [[ "$run_status" != "completed" || "$run_conclusion" != "success" ]]; then
+  echo "Private build $run_id for $channel $sha is $run_status"
   exit 0
 fi
 
@@ -35,7 +49,7 @@ else
   legacy_fallback=1
 fi
 
-gh run download "$run_id" --repo "$repo" --name pi-standalone --dir "$tmp"
+gh run download "$run_id" --repo "$build_repo" --name pi-standalone --dir "$tmp"
 test -s "$tmp/pi-standalone.tar.gz"
 mkdir "$tmp/unpacked"
 tar -xzf "$tmp/pi-standalone.tar.gz" -C "$tmp/unpacked"
