@@ -27,17 +27,25 @@ tmp="$(mktemp -d "$deploy_root/.artifact.XXXXXX")"
 release_tmp="$releases/.${sha}.tmp"
 release="$releases/$sha"
 previous=""
+legacy_fallback=0
 trap 'rm -rf "$tmp" "$release_tmp"' EXIT
-[[ -L "$current" ]] && previous="$(readlink "$current")"
+if [[ -L "$current" ]]; then
+  previous="$(readlink "$current")"
+else
+  legacy_fallback=1
+fi
 
 gh run download "$run_id" --repo "$repo" --name pi-standalone --dir "$tmp"
-test -s "$tmp/server.js"
-test -d "$tmp/.next/static"
-test -d "$tmp/public"
+test -s "$tmp/pi-standalone.tar.gz"
+mkdir "$tmp/unpacked"
+tar -xzf "$tmp/pi-standalone.tar.gz" -C "$tmp/unpacked"
+test -s "$tmp/unpacked/server.js"
+test -d "$tmp/unpacked/.next/static"
+test -d "$tmp/unpacked/public"
 
 if [[ ! -d "$release" ]]; then
   mkdir "$release_tmp"
-  cp -a "$tmp"/. "$release_tmp"/
+  cp -a "$tmp/unpacked"/. "$release_tmp"/
   chmod -R u+rwX,go+rX "$release_tmp"
   mv "$release_tmp" "$release"
 fi
@@ -50,6 +58,8 @@ rollback() {
     ln -sfn "$previous" "$deploy_root/current.rollback"
     mv -Tf "$deploy_root/current.rollback" "$current"
     docker compose -f "$compose" up -d --force-recreate --no-build suas-site >/dev/null 2>&1 || true
+  elif [[ "$legacy_fallback" == 1 ]]; then
+    (cd "$root" && COMPOSE_FILE=docker-compose.yml:docker-compose.deploy.yml docker compose up -d --force-recreate --no-build suas-site) >/dev/null 2>&1 || true
   fi
 }
 
