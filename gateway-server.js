@@ -14,7 +14,18 @@ const Database = require("better-sqlite3");
 const publicPort = Number(process.env.PORT || 3002);
 const nextPort = Number(process.env.NEXT_INTERNAL_PORT || 3012);
 const mavlinkPort = Number(process.env.MAVLINK_PROXY_PORT || 5790);
+const directTcpPort = Number(process.env.SITL_TCP_GATEWAY_PORT || 5770);
+const proxyDirectTcpPort = Number(process.env.SITL_TCP_PROXY_GATEWAY_PORT || 5771);
+const configuredDirectMaxPerIp = Number(process.env.SITL_TCP_MAX_PER_IP || 3);
+// Fail closed to the conservative default if an environment override is
+// malformed. Math.min/max propagate NaN, which would silently disable the
+// per-IP connection cap because every comparison against NaN is false.
+const directMaxPerIp = Number.isFinite(configuredDirectMaxPerIp)
+  ? Math.max(1, Math.min(8, Math.trunc(configuredDirectMaxPerIp)))
+  : 3;
 const dbPath = process.env.DEV_ACCESS_DB || "/home/pi/suas-site-dev/data/dev-access.db";
+const directConnections = new Map();
+const proxyV2Signature = Buffer.from([0x0d, 0x0a, 0x0d, 0x0a, 0x00, 0x0d, 0x0a, 0x51, 0x55, 0x49, 0x54, 0x0a]);
 
 let nextChild;
 try {
@@ -153,6 +164,213 @@ function normalizeIp(value) {
     }
   }
   return ip;
+}
+
+function ensureDirectSchema() {
+  let db;
+  try {
+    db = new Database(dbPath);
+    db.pragma("journal_mode = WAL");
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sitl_tcp_leases (
+        principal_id TEXT PRIMARY KEY,
+        principal_name TEXT NOT NULL,
+        client_ip TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        revoked_at TEXT,
+        last_connected_at TEXT,
+        connection_count INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_sitl_tcp_leases_ip_expiry
+        ON sitl_tcp_leases(client_ip, expires_at);
+    `);
+  } finally {
+    db?.close();
+  }
+}
+
+function activeLeaseForIp(ip) {
+  if (!ip) return null;
+  let db;
+  try {
+    db = new Database(dbPath);
+    return db.prepare(`
+      SELECT principal_id, principal_name, client_ip, expires_at
+      FROM sitl_tcp_leases
+      WHERE client_ip = ? AND revoked_at IS NULL AND expires_at > ?
+      ORDER BY expires_at DESC
+      LIMIT 1
+    `).get(ip, new Date().toISOString()) || null;
+  } catch (error) {
+    console.error("SITL direct access lookup failed", error.message);
+    return null;
+  } finally {
+    db?.close();
+  }
+}
+
+function leaseStillAuthorizes(principalId, ip) {
+  if (!principalId || !ip) return false;
+  let db;
+  try {
+    db = new Database(dbPath, { readonly: true });
+    const row = db.prepare(`
+      SELECT 1
+      FROM sitl_tcp_leases
+      WHERE principal_id = ? AND client_ip = ?
+        AND revoked_at IS NULL AND expires_at > ?
+      LIMIT 1
+    `).get(principalId, ip, new Date().toISOString());
+    return Boolean(row);
+  } catch (error) {
+    console.error("SITL direct access reauthorization failed", error.message);
+    return false;
+  } finally {
+    db?.close();
+  }
+}
+
+function recordDirectConnection(principalId) {
+  let db;
+  try {
+    db = new Database(dbPath);
+    db.prepare(`
+      UPDATE sitl_tcp_leases
+      SET last_connected_at = ?, connection_count = connection_count + 1
+      WHERE principal_id = ?
+    `).run(new Date().toISOString(), principalId);
+  } catch (error) {
+    console.error("SITL direct access accounting failed", error.message);
+  } finally {
+    db?.close();
+  }
+}
+
+function cleanupExpiredDirectLeases() {
+  let db;
+  try {
+    db = new Database(dbPath);
+    const now = new Date();
+    const oldRevocation = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    db.prepare("DELETE FROM sitl_tcp_leases WHERE expires_at <= ? OR (revoked_at IS NOT NULL AND revoked_at <= ?)")
+      .run(now.toISOString(), oldRevocation);
+  } catch (error) {
+    console.error("SITL direct access cleanup failed", error.message);
+  } finally {
+    db?.close();
+  }
+}
+
+function bridgeAuthorizedDirectClient(client, clientIp) {
+  const lease = activeLeaseForIp(clientIp);
+  const currentForIp = directConnections.get(clientIp) || 0;
+  if (!lease || currentForIp >= directMaxPerIp) {
+    client.destroy();
+    return;
+  }
+
+  directConnections.set(clientIp, currentForIp + 1);
+  recordDirectConnection(lease.principal_id);
+  client.setNoDelay(true);
+  client.setKeepAlive(true, 15_000);
+
+  const upstream = net.createConnection({ host: "127.0.0.1", port: mavlinkPort });
+  upstream.setNoDelay(true);
+  upstream.setKeepAlive(true, 15_000);
+
+  let cleaned = false;
+  let authorizationTimer;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    if (authorizationTimer) clearInterval(authorizationTimer);
+    const count = directConnections.get(clientIp) || 1;
+    if (count <= 1) directConnections.delete(clientIp);
+    else directConnections.set(clientIp, count - 1);
+    if (!client.destroyed) client.destroy();
+    if (!upstream.destroyed) upstream.destroy();
+  };
+
+  upstream.once("connect", () => {
+    client.pipe(upstream);
+    upstream.pipe(client);
+    client.resume();
+    // Leases can expire or be revoked while Mission Planner is connected.
+    // Re-check this exact lease so a live TCP stream cannot outlast website
+    // authorization. Do not call activeLeaseForIp() here: multiple approved
+    // users can legitimately share a NAT/public IP, and the newest lease for
+    // that IP must not disconnect an older still-valid session.
+    authorizationTimer = setInterval(() => {
+      if (!leaseStillAuthorizes(lease.principal_id, clientIp)) cleanup();
+    }, 5_000);
+    authorizationTimer.unref();
+  });
+  upstream.on("error", cleanup);
+  upstream.on("close", cleanup);
+  client.on("error", cleanup);
+  client.on("close", cleanup);
+}
+
+function proxyV2ClientIp(buffer) {
+  if (buffer.length < 16 || !buffer.subarray(0, 12).equals(proxyV2Signature)) return null;
+  const versionCommand = buffer[12];
+  const familyProtocol = buffer[13];
+  if ((versionCommand >> 4) !== 2 || (versionCommand & 0x0f) !== 1 || (familyProtocol & 0x0f) !== 1) return null;
+
+  const family = familyProtocol >> 4;
+  if (family === 1) {
+    if (buffer.length < 28) return null;
+    return Array.from(buffer.subarray(16, 20)).join(".");
+  }
+  if (family === 2) {
+    if (buffer.length < 52) return null;
+    const source = buffer.subarray(16, 32);
+    const groups = [];
+    for (let index = 0; index < source.length; index += 2) groups.push(source.readUInt16BE(index).toString(16));
+    return groups.join(":");
+  }
+  return null;
+}
+
+function acceptProxyV2Client(client) {
+  client.pause();
+  let buffer = Buffer.alloc(0);
+  const timeout = setTimeout(() => client.destroy(), 5_000);
+
+  const onData = (chunk) => {
+    buffer = Buffer.concat([buffer, chunk]);
+    if (buffer.length < 16) return;
+    if (!buffer.subarray(0, 12).equals(proxyV2Signature)) {
+      clearTimeout(timeout);
+      client.destroy();
+      return;
+    }
+
+    const addressLength = buffer.readUInt16BE(14);
+    if (addressLength > 1024) {
+      clearTimeout(timeout);
+      client.destroy();
+      return;
+    }
+    const headerLength = 16 + addressLength;
+    if (buffer.length < headerLength) return;
+
+    const clientIp = normalizeIp(proxyV2ClientIp(buffer.subarray(0, headerLength)));
+    clearTimeout(timeout);
+    client.removeListener("data", onData);
+    client.pause();
+    if (!clientIp) {
+      client.destroy();
+      return;
+    }
+    const remainder = buffer.subarray(headerLength);
+    if (remainder.length) client.unshift(remainder);
+    bridgeAuthorizedDirectClient(client, clientIp);
+  };
+
+  client.on("data", onData);
+  client.resume();
 }
 
 function tokenFromProtocol(header) {
@@ -304,12 +522,41 @@ server.on("upgrade", (req, socket) => {
 });
 server.listen(publicPort, "0.0.0.0", () => console.log(`SUAS gateway listening on ${publicPort}; Next on ${nextPort}`));
 
+ensureDirectSchema();
 ensureMissionPlannerSchema();
+const directServer = net.createServer((client) => {
+  const clientIp = normalizeIp(client.remoteAddress);
+  bridgeAuthorizedDirectClient(client, clientIp);
+});
+directServer.on("error", (error) => {
+  console.error(`SITL direct TCP gateway failed on port ${directTcpPort}`, error);
+});
+// Keep the non-PROXY listener local-only. Internet-facing direct access is
+// intentionally exposed through the loopback PROXY-v2 listener below so the
+// gateway authorizes the real client IP supplied by Tailscale Funnel. Binding
+// this fallback listener on every interface needlessly exposed an additional
+// raw TCP port on LAN/Tailscale interfaces and could never reliably match the
+// Cloudflare-observed public IP used when the lease was granted.
+directServer.listen(directTcpPort, "127.0.0.1", () => {
+  console.log(`SITL direct TCP gateway listening on ${directTcpPort}; upstream ${mavlinkPort}`);
+});
+
+const proxyDirectServer = net.createServer(acceptProxyV2Client);
+proxyDirectServer.on("error", (error) => {
+  console.error(`SITL PROXY-v2 TCP gateway failed on port ${proxyDirectTcpPort}`, error);
+});
+proxyDirectServer.listen(proxyDirectTcpPort, "127.0.0.1", () => {
+  console.log(`SITL PROXY-v2 TCP gateway listening on ${proxyDirectTcpPort}; upstream ${mavlinkPort}`);
+});
+const directCleanupTimer = setInterval(cleanupExpiredDirectLeases, 5 * 60 * 1000);
+directCleanupTimer.unref();
 const missionPlannerCleanupTimer = setInterval(cleanupExpiredMissionPlannerAccess, 5 * 60 * 1000);
 missionPlannerCleanupTimer.unref();
 
 function shutdown() {
   server.close();
+  directServer.close();
+  proxyDirectServer.close();
   nextChild?.kill("SIGTERM");
   setTimeout(() => process.exit(0), 2_000).unref();
 }
