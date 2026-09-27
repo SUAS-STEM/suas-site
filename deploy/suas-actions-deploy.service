@@ -1,0 +1,12 @@
+[Unit]
+Description=Deploy latest GitHub-built SUAS production artifact
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/pi/suas-site
+ExecStart=/home/pi/suas-site/deploy/deploy-actions-artifact.sh
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=4min

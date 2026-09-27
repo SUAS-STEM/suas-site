@@ -1,0 +1,31 @@
+name: suas-site
+
+services:
+  suas-site:
+    image: node:20-bookworm-slim
+    container_name: suas-site
+    restart: unless-stopped
+    working_dir: /app
+    user: "1001:1001"
+    command: ["node", "server.js"]
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      SPONSOR_DB_PATH: /data/sponsors.db
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - /home/pi/suas-site/.env.local
+      - /home/pi/suas-site-dev/.env.local
+    volumes:
+      - /home/pi/suas-site-deploy/current:/app:ro
+      - suas_data:/data
+      - /home/pi/suas-status:/run/suas-status:ro
+
+volumes:
+  suas_data:
+    external: true
+    name: suas-site_suas_data
