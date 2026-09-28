@@ -32,12 +32,6 @@ export function expectedDevToken(deviceId?: string, expiresAt = Date.now() + DEV
   return tokenFor(password, "dev-auth", deviceId, expiresAt);
 }
 
-function expectedAdminToken(deviceId: string, expiresAt = Date.now() + DEV_SESSION_MAX_AGE * 1000): string | null {
-  const password = process.env.PASSWORD;
-  if (!password || !deviceId) return null;
-  return tokenFor(password, "dev-admin", deviceId, expiresAt);
-}
-
 export async function isDevAuthorized(): Promise<boolean> {
   const jar = await cookies();
   const sharedUser = userFromSessionToken(jar.get("suas_session")?.value);
@@ -88,9 +82,8 @@ export function setDeviceSession(response: { cookies: { set: (name: string, valu
   };
   response.cookies.set(COOKIE, tokenFor(password, "dev-auth", deviceId, expiresAt), options);
   response.cookies.set(DEVICE_COOKIE, deviceId, options);
-  if (admin) {
-    response.cookies.set(ADMIN_COOKIE, tokenFor(password, "dev-admin", deviceId, expiresAt), options);
-  }
+  if (admin) response.cookies.set(ADMIN_COOKIE, tokenFor(password, "dev-admin", deviceId, expiresAt), options);
+  else response.cookies.set(ADMIN_COOKIE, "", { ...options, maxAge: 0 });
 }
 
 export const DEV_ADMIN_COOKIE = ADMIN_COOKIE;
