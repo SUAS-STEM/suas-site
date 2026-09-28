@@ -132,7 +132,12 @@ export default function AircraftPage() {
                                     alt="Aircraft"
                                     width={width}
                                     height={height}
-                                    sizes="100vw"
+                                    // These are the page's primary content, not off-screen gallery
+                                    // thumbnails. Eager loading prevents a client-side navigation
+                                    // from leaving the image URL unset until a later scroll/revisit.
+                                    priority={src === images[0][0]}
+                                    loading="eager"
+                                    sizes="(max-width: 900px) calc(100vw - 2rem), 900px"
                                     style={{
                                         width: "100%",
                                         height: "auto",

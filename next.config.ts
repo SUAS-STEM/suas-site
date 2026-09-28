@@ -26,6 +26,19 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: "/images/aircraft/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, max-age=31536000, stale-if-error=315360000",
+          },
+        ],
+      },
+      {
         source: "/dev-login",
         headers: [
           { key: "Cache-Control", value: "private, no-store, max-age=0" },

@@ -60,6 +60,9 @@ test -d "$tmp/unpacked/public"
 if [[ ! -d "$release" ]]; then
   mkdir "$release_tmp"
   cp -a "$tmp/unpacked"/. "$release_tmp"/
+  # The runtime release is mounted read-only, but Next's image optimizer needs
+  # a real mount point for the persistent writable cache volume.
+  mkdir -p "$release_tmp/.next/cache"
   chmod -R u+rwX,go+rX "$release_tmp"
   mv "$release_tmp" "$release"
 fi

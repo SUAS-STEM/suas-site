@@ -7,6 +7,8 @@ services:
     image: suas-site:latest
     container_name: suas-site
     restart: unless-stopped
+    user: "0:0"
+    command: ["/usr/local/bin/suas-site-entrypoint"]
     ports:
       - "127.0.0.1:3000:3000"
     extra_hosts:
@@ -17,6 +19,8 @@ services:
       # contains the long-standing dev-auth settings.
       - /home/pi/suas-site-dev/.env.local
     volumes:
+      - ./deploy/production-entrypoint.sh:/usr/local/bin/suas-site-entrypoint:ro
+      - suas_next_cache:/app/.next/cache
       - suas_data:/data
       - /home/pi/suas-status:/run/suas-status:ro
 
@@ -25,4 +29,5 @@ secrets:
     file: ./.secrets/github_token
 
 volumes:
+  suas_next_cache:
   suas_data:

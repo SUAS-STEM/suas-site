@@ -26,6 +26,7 @@ COPY --link --from=builder /app/public ./public
 COPY --link --from=builder --chown=1001:1001 /app/.next/standalone ./
 COPY --link --from=builder --chown=1001:1001 /app/.next/static ./.next/static
 
+RUN mkdir -p .next/cache && chown nextjs:nodejs .next/cache
 RUN mkdir -p /data && chown nextjs:nodejs /data
 ENV SPONSOR_DB_PATH=/data/sponsors.db
 VOLUME /data

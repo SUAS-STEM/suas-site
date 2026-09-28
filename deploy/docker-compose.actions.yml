@@ -6,8 +6,8 @@ services:
     container_name: suas-site
     restart: unless-stopped
     working_dir: /app
-    user: "1001:1001"
-    command: ["node", "server.js"]
+    user: "0:0"
+    command: ["/usr/local/bin/suas-site-entrypoint"]
     environment:
       NODE_ENV: production
       PORT: "3000"
@@ -22,10 +22,18 @@ services:
       - /home/pi/suas-site-dev/.env.local
     volumes:
       - /home/pi/suas-site-deploy/current:/app:ro
+      - /home/pi/suas-site/deploy/production-entrypoint.sh:/usr/local/bin/suas-site-entrypoint:ro
+      # The standalone release is mounted read-only. Keep Next's runtime image
+      # derivatives in a writable volume so an uncached Cloudflare POP can
+      # optimize an image once without producing ENOENT/unhandled-rejection
+      # errors or reprocessing it on every request.
+      - suas_next_cache:/app/.next/cache
       - suas_data:/data
       - /home/pi/suas-status:/run/suas-status:ro
 
 volumes:
+  suas_next_cache:
+    name: suas-site_suas_next_cache
   suas_data:
     external: true
     name: suas-site_suas_data
