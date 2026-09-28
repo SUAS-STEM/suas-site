@@ -520,7 +520,7 @@ server.on("upgrade", (req, socket) => {
     : sourceIp;
   bridgeWebSocket(socket, req.headers, parsed.searchParams.get("access") || "", clientIp);
 });
-server.listen(publicPort, "0.0.0.0", () => console.log(`SUAS gateway listening on ${publicPort}; Next on ${nextPort}`));
+server.listen(publicPort, "127.0.0.1", () => console.log(`SUAS gateway listening on 127.0.0.1:${publicPort}; Next on ${nextPort}`));
 
 ensureDirectSchema();
 ensureMissionPlannerSchema();
