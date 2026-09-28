@@ -8,6 +8,14 @@ const DEVICE_COOKIE = "dev_device";
 const SHARED_COOKIE = "suas_auth";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 const PROTECTED_PREFIXES = ["/dev", "/api/wiki", "/api/links", "/api/dev-files", "/api/dev-sitl", "/api/sitl-access", "/api/sitl-connect"];
+const INSTALLER_CLIENT_PREFIXES = [
+  "/api/ssgcs/install/start",
+  "/api/ssgcs/install/poll",
+  "/api/ssgcs/install/exchange",
+  "/api/ssgcs/install/manifest",
+  "/api/ssgcs/install/files",
+  "/api/ssgcs/admin/releases",
+];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
@@ -101,10 +109,17 @@ export async function proxy(req: NextRequest) {
   // happens after middleware, so this proxy sees the original "/" and must
   // treat it as protected explicitly.
   const isDevHostRoot = host === DEV_HOST && pathname === "/";
+  const isInstallerClientRequest = INSTALLER_CLIENT_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
+  );
 
   if ((isDevHost || isLocalPreview) && !isSameOriginRequest(req, isLocalPreview)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
+
+  // Native installer/deployment clients do not have browser cookies. These
+  // routes enforce their own one-time device proofs or deployment bearer token.
+  if (isDevHost && isInstallerClientRequest) return NextResponse.next();
 
   if (pathname === "/dev-auth-callback" && !isDevHost && !isLocalPreview) {
     return NextResponse.redirect(new URL(pathname + req.nextUrl.search, DEV_ORIGIN));
