@@ -7,6 +7,19 @@ const REPO = "SUAS-STEM/suas-internal";
 const REF = process.env.INTERNAL_REF || "main";
 const TARGET = path.resolve(process.cwd(), "internal");
 const token = process.env.GITHUB_TOKEN;
+const actionsRepository = process.env.GITHUB_REPOSITORY;
+
+// Defense in depth: suas-site is public. Private source must never be fetched
+// by a workflow running in this repository, because any uploaded build
+// artifact from a public Actions run can be downloaded by repository readers.
+// The authorized build workflow lives in the private suas-site-builds repo and
+// checks this public source out there before invoking the same build scripts.
+if (process.env.GITHUB_ACTIONS === "true" && actionsRepository === "SUAS-STEM/suas-site") {
+  console.error(
+    "[fetch-internal] Refusing to fetch private source from public suas-site GitHub Actions.",
+  );
+  process.exit(1);
+}
 
 // Pages that re-export from internal/ (e.g. app/dev/tabs/SsgcsTab.tsx) need
 // the module to exist for the build to compile, even without real content.
