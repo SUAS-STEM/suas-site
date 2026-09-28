@@ -55,10 +55,13 @@ async function storagePayload() {
 }
 
 function responseHeaders(record: Pick<FileRecord, "originalName" | "type">, inline: boolean, size?: number) {
+  const isSvg = record.type.toLowerCase() === "image/svg+xml";
   const headers = new Headers({
     "Cache-Control": "private, no-store",
-    "Content-Type": record.type,
-    "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${cleanOriginalName(record.originalName)}"`,
+    "Content-Type": isSvg ? "application/octet-stream" : record.type,
+    "Content-Disposition": `${inline && !isSvg ? "inline" : "attachment"}; filename="${cleanOriginalName(record.originalName)}"`,
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "sandbox; default-src 'none'",
   });
   if (size != null) headers.set("Content-Length", String(size));
   return headers;

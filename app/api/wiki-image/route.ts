@@ -38,5 +38,13 @@ export async function GET(req: NextRequest) {
     ext === "svg" ? "image/svg+xml" :
     "image/jpeg";
 
-  return new NextResponse(buf, { headers: { "Content-Type": contentType } });
+  const isSvg = ext === "svg";
+  return new NextResponse(buf, {
+    headers: {
+      "Content-Type": isSvg ? "application/octet-stream" : contentType,
+      "Content-Disposition": `${isSvg ? "attachment" : "inline"}; filename="${file}"`,
+      "X-Content-Type-Options": "nosniff",
+      ...(isSvg ? { "Content-Security-Policy": "sandbox; default-src 'none'" } : {}),
+    },
+  });
 }

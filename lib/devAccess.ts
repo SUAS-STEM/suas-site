@@ -20,6 +20,8 @@ export type DeviceAccessRequest = {
   phrase: string;
 };
 
+export type DeviceAccessRequestResult = DeviceAccessRequest & { notify: boolean };
+
 function openDb() {
   mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const db = new Database(DB_PATH);
@@ -62,15 +64,19 @@ function newPhrase() {
   return String(randomInt(1_000_000)).padStart(6, "0");
 }
 
-export function requestDeviceAccess(deviceId: string, name: string, userAgent: string) {
+export function requestDeviceAccess(deviceId: string, name: string, userAgent: string): DeviceAccessRequestResult {
   const db = openDb();
   try {
     const existing = db.prepare("SELECT * FROM device_access_requests WHERE device_id = ?").get(deviceId) as Record<string, unknown> | undefined;
     if (existing) {
-      if (existing.status === "approved") return mapRow(existing);
+      if (existing.status === "approved") return { ...mapRow(existing), notify: false };
+      const requestedAt = Date.parse(String(existing.requested_at));
+      if (existing.status === "pending" && Number.isFinite(requestedAt) && Date.now() - requestedAt < 10 * 60 * 1000) {
+        return { ...mapRow(existing), notify: false };
+      }
       db.prepare("UPDATE device_access_requests SET name = ?, user_agent = ?, requested_at = ?, status = 'pending', reviewed_at = NULL, phrase = ? WHERE device_id = ?")
         .run(name, userAgent, new Date().toISOString(), newPhrase(), deviceId);
-      return mapRow(db.prepare("SELECT * FROM device_access_requests WHERE device_id = ?").get(deviceId) as Record<string, unknown>);
+      return { ...mapRow(db.prepare("SELECT * FROM device_access_requests WHERE device_id = ?").get(deviceId) as Record<string, unknown>), notify: true };
     }
     const request = {
       id: randomUUID(),
@@ -82,7 +88,7 @@ export function requestDeviceAccess(deviceId: string, name: string, userAgent: s
     };
     db.prepare("INSERT INTO device_access_requests (id, device_id, name, user_agent, requested_at, phrase) VALUES (?, ?, ?, ?, ?, ?)")
       .run(request.id, request.deviceId, request.name, request.userAgent, request.requestedAt, request.phrase);
-    return { ...request, status: "pending" as const, reviewedAt: null, role: "member" as const };
+    return { ...request, status: "pending" as const, reviewedAt: null, role: "member" as const, notify: true };
   } finally {
     db.close();
   }

@@ -8,7 +8,9 @@ const DB_PATH = process.env.DEV_ACCESS_DB ||
     ? "/home/pi/suas-site-dev/data/dev-access.db"
     : path.join(process.cwd(), "data", "dev-access.db"));
 
-const SESSION_MAX_AGE = 60 * 60 * 24 * 365 * 10;
+export const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
+const SESSION_IDLE_TIMEOUT = 60 * 60 * 24 * 14;
+const MAX_PENDING_USERS = 500;
 const SCRYPT_OPTIONS = { N: 16_384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 } as const;
 
 export type AuthUser = {
@@ -100,7 +102,7 @@ function authSecret() {
 }
 
 export function signAccessCookie(user: AuthUser, expiresAt = Date.now() + SESSION_MAX_AGE * 1000) {
-  const payload = Buffer.from(JSON.stringify({ uid: user.id, role: user.role, exp: expiresAt }), "utf8").toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ v: 2, uid: user.id, role: user.role, exp: expiresAt }), "utf8").toString("base64url");
   const signature = createHmac("sha256", authSecret()).update(payload).digest("base64url");
   return `${payload}.${signature}`;
 }
@@ -114,8 +116,8 @@ export function verifyAccessCookie(value: string | undefined) {
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
-    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { uid?: string; role?: string; exp?: number };
-    return parsed.uid && parsed.exp && parsed.exp > Date.now() ? parsed : null;
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { v?: number; uid?: string; role?: string; exp?: number };
+    return parsed.v === 2 && parsed.uid && parsed.exp && parsed.exp > Date.now() ? parsed : null;
   } catch {
     return null;
   }
@@ -144,6 +146,8 @@ export function registerUser(usernameInput: string, password: string, displayNam
   const db = openDb();
   try {
     ensureBootstrapAdmin(db);
+    const pending = db.prepare("SELECT COUNT(*) AS count FROM users WHERE status = 'pending'").get() as { count: number };
+    if (pending.count >= MAX_PENDING_USERS) throw new Error("The access queue is full; ask an administrator to review existing requests first");
     const now = new Date().toISOString();
     const id = randomUUID();
     db.prepare("INSERT INTO users (id, username, display_name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)")
@@ -181,12 +185,14 @@ export function userFromSessionToken(token: string | undefined) {
   if (!token) return null;
   const db = openDb();
   try {
-    const row = db.prepare("SELECT u.*, s.id AS session_id FROM trusted_sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.revoked_at IS NULL")
-      .get(tokenHash(token)) as UserRow | undefined;
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - SESSION_IDLE_TIMEOUT * 1000).toISOString();
+    const row = db.prepare("SELECT u.*, s.id AS session_id FROM trusted_sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.last_seen_at > ?")
+      .get(tokenHash(token), cutoff) as UserRow | undefined;
     if (!row) return null;
     const user = mapUser(row);
     if (user.status !== "approved") return null;
-    db.prepare("UPDATE trusted_sessions SET last_seen_at = ? WHERE id = ?").run(new Date().toISOString(), String(row.session_id));
+    db.prepare("UPDATE trusted_sessions SET last_seen_at = ? WHERE id = ?").run(now.toISOString(), String(row.session_id));
     return user;
   } finally {
     db.close();

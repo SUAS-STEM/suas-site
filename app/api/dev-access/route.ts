@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { notifyAccessRequest } from "@/lib/accessRequestEmail";
 import { isDevAdmin, isDevAuthorized, setDeviceSession } from "@/lib/devAdminAuth";
+import { clientAddress, consumeRateLimit } from "@/lib/rateLimit";
 import {
   getDeviceAccess,
   getDeviceAccessByPhrase,
@@ -65,10 +66,15 @@ export async function POST(req: NextRequest) {
     const name = typeof body?.name === "string" ? body.name.trim() : "";
     if (!validDeviceId(deviceId)) return NextResponse.json({ error: "Invalid device" }, { status: 400 });
     if (name.length < 2 || name.length > 80) return NextResponse.json({ error: "Name must be between 2 and 80 characters" }, { status: 400 });
+    const retryAfter = consumeRateLimit([
+      `access-request:ip:${clientAddress(req.headers)}`,
+      `access-request:device:${deviceId}`,
+    ], 3);
+    if (retryAfter) return NextResponse.json({ error: "Too many access requests; try again later" }, { status: 429, headers: { "Retry-After": String(retryAfter) } });
     const request = requestDeviceAccess(deviceId, name, req.headers.get("user-agent") || "");
     const response = NextResponse.json({ status: request.status, requestId: request.id, phrase: request.phrase }, { status: 202 });
     if (request.status === "approved") setDeviceSession(response, deviceId, isPermanentAdmin(deviceId));
-    if (request.status === "pending") void notifyAccessRequest(request).catch((cause) => console.error("Access request email failed", cause));
+    if (request.status === "pending" && request.notify) void notifyAccessRequest(request).catch((cause) => console.error("Access request email failed", cause));
     return response;
   }
 

@@ -52,7 +52,6 @@ export function mimeTypeForName(name: string) {
     ".jpeg": "image/jpeg",
     ".jpg": "image/jpeg",
     ".png": "image/png",
-    ".svg": "image/svg+xml",
     ".webp": "image/webp",
     ".avi": "video/x-msvideo",
     ".m4v": "video/x-m4v",

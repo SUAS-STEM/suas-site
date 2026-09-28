@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { getDeviceAccess, isPermanentAdmin } from "@/lib/devAccess";
 import { userFromSessionToken } from "@/lib/authCore";
@@ -6,18 +6,36 @@ import { userFromSessionToken } from "@/lib/authCore";
 const COOKIE = "dev_auth";
 const DEVICE_COOKIE = "dev_device";
 const ADMIN_COOKIE = "dev_admin";
-const SESSION_MAX_AGE = 60 * 60 * 24 * 365 * 10;
+export const DEV_SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 
-export function expectedDevToken(deviceId?: string): string | null {
-  const password = process.env.PASSWORD;
-  if (!password || !deviceId) return null;
-  return createHmac("sha256", password).update(`dev-auth:${deviceId}`).digest("base64url");
+function tokenFor(password: string, purpose: "dev-auth" | "dev-admin", deviceId: string, expiresAt: number) {
+  const payload = `v2:${purpose}:${deviceId}:${expiresAt}`;
+  const signature = createHmac("sha256", password).update(payload).digest("base64url");
+  return `${expiresAt}.${signature}`;
 }
 
-function expectedAdminToken(deviceId: string): string | null {
+function validToken(password: string, purpose: "dev-auth" | "dev-admin", deviceId: string, token: string | undefined) {
+  if (!token) return false;
+  const separator = token.indexOf(".");
+  if (separator <= 0) return false;
+  const expiresAt = Number(token.slice(0, separator));
+  if (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now()) return false;
+  const expected = tokenFor(password, purpose, deviceId, expiresAt);
+  const actualBytes = Buffer.from(token.slice(separator + 1));
+  const expectedBytes = Buffer.from(expected.slice(expected.indexOf(".") + 1));
+  return actualBytes.length === expectedBytes.length && timingSafeEqual(actualBytes, expectedBytes);
+}
+
+export function expectedDevToken(deviceId?: string, expiresAt = Date.now() + DEV_SESSION_MAX_AGE * 1000): string | null {
   const password = process.env.PASSWORD;
   if (!password || !deviceId) return null;
-  return createHmac("sha256", password).update(`dev-admin:${deviceId}`).digest("base64url");
+  return tokenFor(password, "dev-auth", deviceId, expiresAt);
+}
+
+function expectedAdminToken(deviceId: string, expiresAt = Date.now() + DEV_SESSION_MAX_AGE * 1000): string | null {
+  const password = process.env.PASSWORD;
+  if (!password || !deviceId) return null;
+  return tokenFor(password, "dev-admin", deviceId, expiresAt);
 }
 
 export async function isDevAuthorized(): Promise<boolean> {
@@ -25,11 +43,9 @@ export async function isDevAuthorized(): Promise<boolean> {
   const sharedUser = userFromSessionToken(jar.get("suas_session")?.value);
   if (sharedUser?.status === "approved") return true;
   const deviceId = jar.get(DEVICE_COOKIE)?.value;
-  const expected = expectedDevToken(deviceId);
-  if (!expected) return false;
-  if (jar.get(COOKIE)?.value !== expected) return false;
-  const adminToken = deviceId ? expectedAdminToken(deviceId) : null;
-  if (adminToken && jar.get(ADMIN_COOKIE)?.value === adminToken) return true;
+  const password = process.env.PASSWORD;
+  if (!password || !deviceId || !validToken(password, "dev-auth", deviceId, jar.get(COOKIE)?.value)) return false;
+  if (validToken(password, "dev-admin", deviceId, jar.get(ADMIN_COOKIE)?.value)) return true;
   return !!deviceId && getDeviceAccess(deviceId)?.status === "approved";
 }
 
@@ -38,12 +54,10 @@ export async function isDevAdmin(): Promise<boolean> {
   const sharedUser = userFromSessionToken(jar.get("suas_session")?.value);
   if (sharedUser?.status === "approved") return sharedUser.role === "admin";
   const deviceId = jar.get(DEVICE_COOKIE)?.value;
-  const expected = expectedDevToken(deviceId);
-  const expectedAdmin = deviceId ? expectedAdminToken(deviceId) : null;
+  const password = process.env.PASSWORD;
   return Boolean(
-    expected && expectedAdmin &&
-    jar.get(COOKIE)?.value === expected &&
-    (jar.get(ADMIN_COOKIE)?.value === expectedAdmin || (deviceId && isPermanentAdmin(deviceId))),
+    password && deviceId && validToken(password, "dev-auth", deviceId, jar.get(COOKIE)?.value) &&
+    (validToken(password, "dev-admin", deviceId, jar.get(ADMIN_COOKIE)?.value) || isPermanentAdmin(deviceId)),
   );
 }
 
@@ -53,30 +67,29 @@ export async function currentDevIdentity() {
   if (sharedUser) return { id: sharedUser.id, name: sharedUser.displayName, username: sharedUser.username, role: sharedUser.role };
   const deviceId = jar.get(DEVICE_COOKIE)?.value || "admin";
   const request = getDeviceAccess(deviceId);
-  const adminToken = expectedAdminToken(deviceId);
+  const password = process.env.PASSWORD;
   const admin = Boolean(
-    expectedDevToken(deviceId) && adminToken &&
-    jar.get(COOKIE)?.value === expectedDevToken(deviceId) &&
-    (jar.get(ADMIN_COOKIE)?.value === adminToken || isPermanentAdmin(deviceId)),
+    password && validToken(password, "dev-auth", deviceId, jar.get(COOKIE)?.value) &&
+    (validToken(password, "dev-admin", deviceId, jar.get(ADMIN_COOKIE)?.value) || isPermanentAdmin(deviceId)),
   );
   return { id: deviceId, name: request?.name || (admin ? "Admin" : "Approved member"), role: admin ? "admin" as const : "member" as const };
 }
 
 export function setDeviceSession(response: { cookies: { set: (name: string, value: string, options: Record<string, unknown>) => void } }, deviceId: string, admin = false) {
-  const token = expectedDevToken(deviceId);
-  if (!token) throw new Error("Dev access is not configured");
+  const password = process.env.PASSWORD;
+  if (!password) throw new Error("Dev access is not configured");
+  const expiresAt = Date.now() + DEV_SESSION_MAX_AGE * 1000;
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: SESSION_MAX_AGE,
+    maxAge: DEV_SESSION_MAX_AGE,
   };
-  response.cookies.set(COOKIE, token, options);
+  response.cookies.set(COOKIE, tokenFor(password, "dev-auth", deviceId, expiresAt), options);
   response.cookies.set(DEVICE_COOKIE, deviceId, options);
   if (admin) {
-    const adminToken = expectedAdminToken(deviceId);
-    if (adminToken) response.cookies.set(ADMIN_COOKIE, adminToken, options);
+    response.cookies.set(ADMIN_COOKIE, tokenFor(password, "dev-admin", deviceId, expiresAt), options);
   }
 }
 

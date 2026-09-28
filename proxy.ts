@@ -6,14 +6,14 @@ const DEV_ORIGIN = `https://${DEV_HOST}`;
 const COOKIE = "dev_auth";
 const DEVICE_COOKIE = "dev_device";
 const SHARED_COOKIE = "suas_auth";
-const SESSION_MAX_AGE = 60 * 60 * 24 * 365 * 10;
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 const PROTECTED_PREFIXES = ["/dev", "/api/wiki", "/api/links", "/api/dev-files", "/api/dev-sitl", "/api/sitl-access", "/api/sitl-connect"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
-async function makeToken(password: string, deviceId?: string): Promise<string> {
+async function makeToken(password: string, deviceId = "", expiresAt = Date.now() + SESSION_MAX_AGE * 1000): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(password),
@@ -21,9 +21,34 @@ async function makeToken(password: string, deviceId?: string): Promise<string> {
     false,
     ["sign"]
   );
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(deviceId ? `dev-auth:${deviceId}` : "dev-auth"));
-  return btoa(String.fromCharCode(...new Uint8Array(sig)))
+  const payload = `v2:dev-auth:${deviceId}:${expiresAt}`;
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  const encoded = btoa(String.fromCharCode(...new Uint8Array(sig)))
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  return `${expiresAt}.${encoded}`;
+}
+
+async function verifyDeviceToken(password: string, deviceId: string, token: string | undefined) {
+  if (!token) return false;
+  const separator = token.indexOf(".");
+  if (separator <= 0) return false;
+  const expiresAt = Number(token.slice(0, separator));
+  if (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now()) return false;
+  return token === await makeToken(password, deviceId, expiresAt);
+}
+
+function isSameOriginRequest(req: NextRequest, isLocalPreview: boolean) {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return true;
+  const origin = req.headers.get("origin");
+  if (!origin) return true;
+  try {
+    const allowed = isLocalPreview
+      ? new Set(["http://localhost", "http://127.0.0.1", "http://localhost:3002", "http://127.0.0.1:3002"])
+      : new Set([DEV_ORIGIN]);
+    return allowed.has(new URL(origin).origin);
+  } catch {
+    return false;
+  }
 }
 
 function setAuthCookies(response: NextResponse, token: string, deviceId: string) {
@@ -59,8 +84,8 @@ async function verifySharedCookie(value: string | undefined): Promise<boolean> {
   }
   if (!await crypto.subtle.verify("HMAC", key, bytes as BufferSource, new TextEncoder().encode(payload) as BufferSource)) return false;
   try {
-    const parsed = JSON.parse(new TextDecoder().decode(decode(payload))) as { exp?: number };
-    return typeof parsed.exp === "number" && parsed.exp > Date.now();
+    const parsed = JSON.parse(new TextDecoder().decode(decode(payload))) as { v?: number; exp?: number };
+    return parsed.v === 2 && typeof parsed.exp === "number" && parsed.exp > Date.now();
   } catch {
     return false;
   }
@@ -76,6 +101,10 @@ export async function proxy(req: NextRequest) {
   // happens after middleware, so this proxy sees the original "/" and must
   // treat it as protected explicitly.
   const isDevHostRoot = host === DEV_HOST && pathname === "/";
+
+  if ((isDevHost || isLocalPreview) && !isSameOriginRequest(req, isLocalPreview)) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
 
   if (pathname === "/dev-auth-callback" && !isDevHost && !isLocalPreview) {
     return NextResponse.redirect(new URL(pathname + req.nextUrl.search, DEV_ORIGIN));
@@ -135,13 +164,12 @@ export async function proxy(req: NextRequest) {
   if (await verifySharedCookie(req.cookies.get(SHARED_COOKIE)?.value)) {
     return NextResponse.next();
   }
-  const expected = deviceId ? await makeToken(password, deviceId) : "";
-  if (token && deviceId && token === expected) {
+  if (token && deviceId && await verifyDeviceToken(password, deviceId, token)) {
     const response = NextResponse.next();
     setAuthCookies(response, token, deviceId);
     return response;
   }
-  if (token === await makeToken(password)) {
+  if (await verifyDeviceToken(password, "", token)) {
     const upgradedDeviceId = crypto.randomUUID();
     const response = NextResponse.next();
     setAuthCookies(response, await makeToken(password, upgradedDeviceId), upgradedDeviceId);

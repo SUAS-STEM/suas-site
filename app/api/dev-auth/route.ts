@@ -2,21 +2,7 @@ import { randomBytes, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requestOrigin } from "@/lib/requestOrigin";
 import { setDeviceSession } from "@/lib/devAdminAuth";
-
-const WINDOW_MS = 15 * 60 * 1000;
-const MAX_ATTEMPTS = 10;
-const attempts = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = attempts.get(ip);
-  if (!entry || now > entry.resetAt) {
-    attempts.set(ip, { count: 1, resetAt: now + WINDOW_MS });
-    return false;
-  }
-  entry.count++;
-  return entry.count > MAX_ATTEMPTS;
-}
+import { clientAddress, consumeRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   const contentType = req.headers.get("content-type") ?? "";
@@ -38,8 +24,8 @@ export async function POST(req: NextRequest) {
   }
 
   const origin = requestOrigin(req);
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-  if (isRateLimited(ip)) {
+  const retryAfter = consumeRateLimit([`legacy-login:ip:${clientAddress(req.headers)}`], 10);
+  if (retryAfter) {
     const url = new URL("/dev-login", origin);
     url.searchParams.set("error", "rate-limited");
     url.searchParams.set("redirect", redirect);
