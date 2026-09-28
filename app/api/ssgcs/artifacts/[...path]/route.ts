@@ -13,7 +13,9 @@ const ROOT = resolve(process.env.SSGCS_ARTIFACT_ROOT || "/data/ssgcs-artifacts")
 // Keep this aligned with next.config.ts proxyClientMaxBodySize. Release
 // binaries live on GitHub Releases; this endpoint is for installer/support
 // assets that should remain small enough to pass through the site proxy.
-const MAX_BYTES = 90 * 1024 * 1024;
+// Keep support assets comfortably below the site's 90 MB proxy body limit.
+// Release binaries themselves are published through GitHub Releases.
+const MAX_BYTES = 64 * 1024 * 1024;
 const CHANNELS = new Set(["development", "candidate", "production"]);
 const NO_INDEX = "noindex, nofollow, noarchive, nosnippet";
 
