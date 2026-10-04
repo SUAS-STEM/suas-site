@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { currentDevIdentity, isDevAuthorized } from "@/lib/devAdminAuth";
 import { deleteFileRecord, fileFolderExists, findFileRecordByHash, getFileRecord, listFileRecords, renameFileRecord, saveFileRecord, updateFileHash, type FileRecord } from "@/lib/fileRecords";
-import { removeLocalCache } from "@/lib/localCache";
+import { isLocallyCached, removeLocalCache, streamFileFromLocal } from "@/lib/localCache";
 import { deleteFileThumbnail } from "@/lib/fileThumbnails";
 import { deleteStoredFile, getTieredStorageStatus, releaseTieredUploads, reserveTieredUploads, storeStreamWithHash, streamStoredFile } from "@/lib/tieredStorage";
 import {
@@ -54,10 +54,17 @@ async function storagePayload() {
   return (await getTieredStorageStatus()).combined;
 }
 
-function responseHeaders(record: Pick<FileRecord, "originalName" | "type">, inline: boolean, size?: number) {
+function responseHeaders(
+  record: Pick<FileRecord, "originalName" | "type">,
+  inline: boolean,
+  size?: number,
+  cacheable = false,
+) {
   const isSvg = record.type.toLowerCase() === "image/svg+xml";
   const headers = new Headers({
-    "Cache-Control": "private, no-store",
+    "Cache-Control": cacheable ? "private, max-age=31536000, immutable" : "private, no-store",
+    "Cloudflare-CDN-Cache-Control": "no-store",
+    "Vary": "Cookie",
     "Content-Type": isSvg ? "application/octet-stream" : record.type,
     "Content-Disposition": `${inline && !isSvg ? "inline" : "attachment"}; filename="${cleanOriginalName(record.originalName)}"`,
     "X-Content-Type-Options": "nosniff",
@@ -77,11 +84,16 @@ export async function GET(req: NextRequest) {
     const record = getFileRecord(name);
     if (!record || (categoryParam && record.category !== categoryParam)) return NextResponse.json({ error: "File not found" }, { status: 404 });
     if (record.cloudStatus !== "uploaded" && record.cloudStatus !== "local") return NextResponse.json({ error: "File is not available yet." }, { status: 404 });
-    const stored = streamStoredFile(record);
+    const localStream = record.cloudStatus === "uploaded" && await isLocallyCached(record)
+      ? { remoteStream: streamFileFromLocal(record) }
+      : null;
+    const stored = localStream || streamStoredFile(record);
     if (!stored) return NextResponse.json({ error: "Stored file is temporarily unavailable." }, { status: 503 });
     const body = Readable.toWeb(stored.remoteStream) as unknown as ReadableStream;
     const inline = record.type.startsWith("image/") || record.type.startsWith("video/");
-    return new NextResponse(body, { headers: responseHeaders(record, inline, record.size) });
+    const expectedVersion = record.sha256 || record.uploadedAt;
+    const cacheable = inline && req.nextUrl.searchParams.get("v") === expectedVersion;
+    return new NextResponse(body, { headers: responseHeaders(record, inline, record.size, cacheable) });
   }
   return NextResponse.json({ files: listFiles(), storage: await storagePayload() }, { headers: { "Cache-Control": "private, no-store" } });
 }

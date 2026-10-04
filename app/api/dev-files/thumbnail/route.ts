@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
         // Dev gallery thumbnails are authenticated team content. Keep them out
         // of shared/CDN caches, but let the signed-in browser reuse the
         // versioned thumbnail URL while scrolling and revisiting the gallery.
-        "Cache-Control": "private, max-age=3600, immutable",
+        "Cache-Control": "private, max-age=31536000, immutable",
         "Cloudflare-CDN-Cache-Control": "no-store",
         "Vary": "Cookie",
         "X-Content-Type-Options": "nosniff",

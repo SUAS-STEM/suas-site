@@ -3,11 +3,12 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
     DURABLE_GALLERY_BASE,
+    GALLERY_DISPLAY,
     GALLERY_PHOTOS,
     GALLERY_THUMBNAILS,
 } from "@/lib/galleryPhotos.generated";
 
-function useDurableFallback(
+function applyDurableFallback(
     event: React.SyntheticEvent<HTMLImageElement>,
     originalSrc: string,
 ) {
@@ -30,6 +31,7 @@ function useDurableFallback(
 export default function GalleryPage() {
     // Baked into the static page and served from a Pi-independent origin.
     const galleryPhotos = GALLERY_PHOTOS as readonly string[];
+    const galleryDisplay = GALLERY_DISPLAY as readonly string[];
     const galleryThumbnails = GALLERY_THUMBNAILS as readonly string[];
     const [isFullscreenMode, setIsFullscreenMode] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -94,12 +96,12 @@ export default function GalleryPage() {
                 const image = new window.Image();
                 image.decoding = "async";
                 image.fetchPriority = "low";
-                image.src = galleryPhotos[index];
+                image.src = galleryDisplay[index] || galleryPhotos[index];
                 return image;
             });
         }, 250);
         return () => window.clearTimeout(timer);
-    }, [currentImageLoaded, currentIndex, galleryPhotos, isFullscreenMode]);
+    }, [currentImageLoaded, currentIndex, galleryDisplay, galleryPhotos, isFullscreenMode]);
 
     return (
         <main className="text-white font-sans py-8">
@@ -171,12 +173,16 @@ export default function GalleryPage() {
                                     className={`w-full flex items-start justify-center rounded-xl overflow-hidden ${switchClass}`}
                                 >
                                     <img
-                                        src={galleryPhotos[currentIndex] || "/logo.png"}
+                                        src={
+                                            galleryDisplay[currentIndex] ||
+                                            galleryPhotos[currentIndex] ||
+                                            "/logo.png"
+                                        }
                                         alt={`gallery-${currentIndex + 1}`}
                                         className="block h-auto w-auto max-w-full rounded-xl border border-white"
                                         style={{ borderRadius: "0.75rem" }}
                                         onError={(e) => {
-                                            useDurableFallback(e, galleryPhotos[currentIndex] || "/logo.png");
+                                            applyDurableFallback(e, galleryPhotos[currentIndex] || "/logo.png");
                                         }}
                                         onLoad={() => setCurrentImageLoaded(true)}
                                         width="1200"
@@ -203,7 +209,7 @@ export default function GalleryPage() {
                                         alt={`gallery-${idx + 1}`}
                                         className="w-full h-auto aspect-[4/3] object-cover rounded-lg"
                                         onError={(e) => {
-                                            useDurableFallback(e, src);
+                                            applyDurableFallback(e, src);
                                         }}
                                         width="400"
                                         height="300"

@@ -45,6 +45,11 @@ function fileUrl(file: UploadedFile) {
   return `/api/dev-files?name=${encodeURIComponent(file.name)}&category=${file.category}`;
 }
 
+function previewUrl(file: UploadedFile) {
+  const version = file.sha256 || file.uploadedAt;
+  return `${fileUrl(file)}&v=${encodeURIComponent(version)}`;
+}
+
 function thumbnailUrl(file: UploadedFile) {
   const version = file.sha256 || file.uploadedAt;
   return `/api/dev-files/thumbnail?name=${encodeURIComponent(file.name)}&category=${file.category}&v=${encodeURIComponent(version)}`;
@@ -68,6 +73,7 @@ export default function UploadsTab() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [viewerImageLoaded, setViewerImageLoaded] = useState(false);
   const [propertiesFile, setPropertiesFile] = useState<UploadedFile | null>(null);
   const [renameTarget, setRenameTarget] = useState<UploadedFile | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -91,8 +97,12 @@ export default function UploadsTab() {
   const prefetchedViewerImages = useRef<HTMLImageElement[]>([]);
 
   useEffect(() => {
+    setViewerImageLoaded(false);
+  }, [viewerIndex]);
+
+  useEffect(() => {
     prefetchedViewerImages.current = [];
-    if (viewerIndex == null || !viewerFile || !viewerFile.type.startsWith("image/") || previewFiles.length < 2) return;
+    if (viewerIndex == null || !viewerFile || !viewerImageLoaded || !viewerFile.type.startsWith("image/") || previewFiles.length < 2) return;
     const timer = window.setTimeout(() => {
       const neighborIndices = [
         (viewerIndex + 1) % previewFiles.length,
@@ -105,12 +115,12 @@ export default function UploadsTab() {
           const image = new window.Image();
           image.decoding = "async";
           image.fetchPriority = "low";
-          image.src = fileUrl(file);
+          image.src = previewUrl(file);
           return image;
         });
-    }, 500);
+    }, 250);
     return () => window.clearTimeout(timer);
-  }, [previewFiles, viewerFile, viewerIndex]);
+  }, [previewFiles, viewerFile, viewerImageLoaded, viewerIndex]);
 
   async function refresh(initial = false) {
     if (refreshInFlight.current) return;
@@ -481,7 +491,7 @@ export default function UploadsTab() {
         <div className="max-h-[42rem] overflow-y-auto pr-1">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {previewFiles.map((file, index) => (
-              <MediaCard key={file.name} file={file} eager={index < 8} onView={() => setViewerIndex(index)} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} />
+              <MediaCard key={file.name} file={file} eager={index < 6} onView={() => setViewerIndex(index)} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} />
             ))}
             {visibleFiles.filter((file) => !file.type.startsWith("image/") && !file.type.startsWith("video/")).map((file) => (
               <FileRow key={file.name} file={file} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} />
@@ -492,7 +502,7 @@ export default function UploadsTab() {
         <div className="max-h-[42rem] overflow-y-auto pr-1">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {galleryFiles.map((file, index) => (
-            <GalleryCard key={file.name} file={file} eager={index < 8} onView={() => setViewerIndex(index)} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} />
+            <GalleryCard key={file.name} file={file} eager={index < 6} onView={() => setViewerIndex(index)} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} />
           ))}
           {visibleFiles.filter((file) => !file.type.startsWith("image/")).map((file) => (
             <FileRow key={file.name} file={file} onDelete={removeFile} onRename={startRename} onProperties={setPropertiesFile} />
@@ -515,9 +525,9 @@ export default function UploadsTab() {
           </button>
           <figure className="flex max-h-[90vh] max-w-5xl flex-col items-center gap-3 overflow-auto" onClick={(event) => event.stopPropagation()}>
             {viewerFile.type.startsWith("video/") ? (
-              <video src={fileUrl(viewerFile)} controls autoPlay playsInline className="max-h-[78vh] max-w-full" aria-label={viewerFile.originalName} />
+              <video src={previewUrl(viewerFile)} controls autoPlay playsInline className="max-h-[78vh] max-w-full" aria-label={viewerFile.originalName} />
             ) : (
-              <img src={fileUrl(viewerFile)} alt={viewerFile.originalName} loading="eager" decoding="async" fetchPriority="high" className="max-h-[78vh] max-w-full object-contain" />
+              <img src={previewUrl(viewerFile)} alt={viewerFile.originalName} loading="eager" decoding="async" fetchPriority="high" onLoad={() => setViewerImageLoaded(true)} className="max-h-[78vh] max-w-full object-contain" />
             )}
             <figcaption className="text-sm text-white/65">{viewerFile.originalName}</figcaption>
           </figure>
