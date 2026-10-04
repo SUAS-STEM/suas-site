@@ -9,6 +9,7 @@ const DB_PATH = process.env.DEV_FILE_METADATA_DB ||
     : path.join(process.cwd(), "data", "file-records.db"));
 
 export type CloudFileStatus = "local" | "pending" | "uploaded" | "failed" | "not_configured";
+export type StorageBackend = "tiered" | "release_store";
 
 export type FileRecord = {
   name: string;
@@ -22,6 +23,7 @@ export type FileRecord = {
   uploaderId: string;
   uploaderName: string;
   sha256: string | null;
+  storageBackend: StorageBackend;
   cloudStatus: CloudFileStatus;
   cloudError: string | null;
 };
@@ -52,6 +54,7 @@ function openDb() {
       uploader_id TEXT NOT NULL,
       uploader_name TEXT NOT NULL,
       sha256 TEXT,
+      storage_backend TEXT NOT NULL DEFAULT 'tiered',
       cloud_status TEXT NOT NULL DEFAULT 'not_configured',
       cloud_error TEXT
     );
@@ -65,6 +68,7 @@ function openDb() {
   `);
   try { db.exec("ALTER TABLE file_records ADD COLUMN sha256 TEXT"); } catch { /* Column already exists on upgraded databases. */ }
   try { db.exec("ALTER TABLE file_records ADD COLUMN folder_path TEXT NOT NULL DEFAULT ''"); } catch { /* Column already exists on upgraded databases. */ }
+  try { db.exec("ALTER TABLE file_records ADD COLUMN storage_backend TEXT NOT NULL DEFAULT 'tiered'"); } catch { /* Column already exists on upgraded databases. */ }
   db.exec(`
     CREATE TABLE IF NOT EXISTS file_folders (
       category TEXT NOT NULL,
@@ -90,6 +94,7 @@ function mapRow(row: Record<string, unknown>): FileRecord {
     uploaderId: String(row.uploader_id),
     uploaderName: String(row.uploader_name),
     sha256: row.sha256 ? String(row.sha256) : null,
+    storageBackend: row.storage_backend === "release_store" ? "release_store" : "tiered",
     cloudStatus: row.cloud_status as CloudFileStatus,
     cloudError: row.cloud_error ? String(row.cloud_error) : null,
   };
@@ -100,8 +105,8 @@ export function saveFileRecord(record: FileRecord) {
   try {
     db.prepare(`
       INSERT INTO file_records
-        (name, original_name, size, type, modified_at, uploaded_at, category, folder_path, uploader_id, uploader_name, sha256, cloud_status, cloud_error)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (name, original_name, size, type, modified_at, uploaded_at, category, folder_path, uploader_id, uploader_name, sha256, storage_backend, cloud_status, cloud_error)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(name) DO UPDATE SET
         original_name = excluded.original_name,
         size = excluded.size,
@@ -112,6 +117,7 @@ export function saveFileRecord(record: FileRecord) {
         uploader_id = excluded.uploader_id,
         uploader_name = excluded.uploader_name,
         sha256 = excluded.sha256,
+        storage_backend = excluded.storage_backend,
         cloud_status = excluded.cloud_status,
         cloud_error = excluded.cloud_error
     `).run(
@@ -126,6 +132,7 @@ export function saveFileRecord(record: FileRecord) {
       record.uploaderId,
       record.uploaderName,
       record.sha256,
+      record.storageBackend,
       record.cloudStatus,
       record.cloudError,
     );

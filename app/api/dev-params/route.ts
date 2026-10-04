@@ -10,7 +10,7 @@ import { deleteStoredFile, getTieredStorageStatus, releaseTieredUploads, reserve
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type PublicVersion = Omit<ParamVersion, "parameters" | "cloudStatus" | "cloudError"> & { status: "ready" | "pending" | "error" };
+type PublicVersion = Omit<ParamVersion, "parameters" | "cloudStatus" | "cloudError" | "storageBackend"> & { status: "ready" | "pending" | "error" };
 
 function publicVersion(version: ParamVersion): PublicVersion {
   const status = version.cloudStatus === "uploaded" || version.cloudStatus === "local"
@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
       uploaderId: identity.id,
       uploaderName: identity.name,
       sha256: null,
+      storageBackend: "tiered",
       cloudStatus: "pending",
       cloudError: null,
     };

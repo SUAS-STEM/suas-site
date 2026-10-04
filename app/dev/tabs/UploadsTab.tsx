@@ -284,7 +284,7 @@ export default function UploadsTab() {
         }
 
         let completion: Response | null = null;
-        let completed: { ok?: boolean; file?: UploadedFile; duplicate?: boolean; error?: string } = {};
+        let completed: { ok?: boolean; pending?: boolean; file?: UploadedFile; duplicate?: boolean; error?: string } = {};
         for (let attempt = 0; attempt < 3; attempt += 1) {
           try {
             completion = await fetch("/api/dev-files/upload", {
@@ -293,6 +293,38 @@ export default function UploadsTab() {
               body: JSON.stringify({ action: "complete", id: created.id }),
             });
             completed = await completion.json().catch(() => ({}));
+            if (completion.ok && completed.file) break;
+            if (completion.status === 202 && completed.pending) {
+              for (let poll = 0; poll < 300; poll += 1) {
+                await new Promise((resolve) => window.setTimeout(resolve, 1000));
+                const statusResponse = await fetch(`/api/dev-files/upload?id=${encodeURIComponent(created.id)}`, { cache: "no-store" });
+                const status = await statusResponse.json().catch(() => ({})) as {
+                  complete?: boolean;
+                  file?: UploadedFile;
+                  duplicate?: boolean;
+                  replicatedBytes?: number | null;
+                  size?: number;
+                  error?: string;
+                };
+                if (!statusResponse.ok) {
+                  if (statusResponse.status >= 500) continue;
+                  throw new Error(status.error || `Could not check ${file.name} upload status.`);
+                }
+                if (status.complete && status.file) {
+                  completed = { ok: true, file: status.file, duplicate: status.duplicate };
+                  completion = new Response(null, { status: 200 });
+                  break;
+                }
+                if (typeof status.replicatedBytes === "number" && status.size) {
+                  const cloudPercent = Math.min(100, Math.floor(status.replicatedBytes / status.size * 100));
+                  setMessage(`Finalizing ${index + 1}/${chosen.length} · ${file.name} · GitHub ${cloudPercent}%`);
+                } else {
+                  setMessage(`Finalizing ${index + 1}/${chosen.length} · ${file.name}…`);
+                }
+              }
+              if (completed.file) break;
+              throw new Error(`GitHub Releases is still finalizing ${file.name}. Retry the upload status shortly.`);
+            }
             if (completion.ok) break;
             if (completion.status < 500) throw new Error(completed.error || `Could not finalize ${file.name} (${completion.status})`);
           } catch (cause) {

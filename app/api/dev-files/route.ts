@@ -1,28 +1,26 @@
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
-import { currentDevIdentity, isDevAuthorized } from "@/lib/devAdminAuth";
-import { deleteFileRecord, fileFolderExists, findFileRecordByHash, getFileRecord, listFileRecords, renameFileRecord, saveFileRecord, updateFileHash, type FileRecord } from "@/lib/fileRecords";
+import { isDevAuthorized } from "@/lib/devAdminAuth";
+import { deleteFileRecord, getFileRecord, listFileRecords, renameFileRecord, type FileRecord } from "@/lib/fileRecords";
 import { isLocallyCached, removeLocalCache, streamFileFromLocal } from "@/lib/localCache";
 import { deleteFileThumbnail } from "@/lib/fileThumbnails";
-import { deleteStoredFile, getTieredStorageStatus, releaseTieredUploads, reserveTieredUploads, storeStreamWithHash, streamStoredFile } from "@/lib/tieredStorage";
+import { deleteStoredFile, streamStoredFile } from "@/lib/tieredStorage";
+import {
+  deleteReleaseStoreFile,
+  fetchReleaseStoreFile,
+  getReleaseStoreStorage,
+  ReleaseStoreError,
+} from "@/lib/releaseStore";
 import {
   cleanOriginalName,
   isStoredFileName,
   isUploadCategory,
-  MAX_UPLOAD_FILES,
-  MAX_UPLOAD_FILE_BYTES,
-  MAX_UPLOAD_REQUEST_BYTES,
-  mimeTypeForName,
-  originalNameFromStored,
-  storedFileName,
-  type UploadCategory,
 } from "@/lib/devUploads";
-import { isValidFolderPath } from "@/lib/devFolders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type PublicFile = Omit<FileRecord, "cloudStatus" | "cloudError"> & { status: "ready" | "pending" | "error" };
+type PublicFile = Omit<FileRecord, "cloudStatus" | "cloudError" | "storageBackend"> & { status: "ready" | "pending" | "error" };
 
 function publicFile(record: FileRecord): PublicFile {
   const status = record.cloudStatus === "uploaded" || record.cloudStatus === "local"
@@ -51,7 +49,7 @@ function listFiles(): PublicFile[] {
 }
 
 async function storagePayload() {
-  return (await getTieredStorageStatus()).combined;
+  return getReleaseStoreStorage();
 }
 
 function responseHeaders(
@@ -84,93 +82,43 @@ export async function GET(req: NextRequest) {
     const record = getFileRecord(name);
     if (!record || (categoryParam && record.category !== categoryParam)) return NextResponse.json({ error: "File not found" }, { status: 404 });
     if (record.cloudStatus !== "uploaded" && record.cloudStatus !== "local") return NextResponse.json({ error: "File is not available yet." }, { status: 404 });
+    const inline = record.type.startsWith("image/") || record.type.startsWith("video/");
+    const expectedVersion = record.sha256 || record.uploadedAt;
+    const cacheable = inline && req.nextUrl.searchParams.get("v") === expectedVersion;
+    if (record.storageBackend === "release_store") {
+      try {
+        const remote = await fetchReleaseStoreFile(record.name, req.headers.get("range"));
+        if (!remote.body) return NextResponse.json({ error: "Stored file is temporarily unavailable." }, { status: 503 });
+        const headers = responseHeaders(record, inline, remote.status === 206 ? undefined : record.size, cacheable);
+        for (const name of ["accept-ranges", "content-range", "etag"]) {
+          const value = remote.headers.get(name);
+          if (value) headers.set(name, value);
+        }
+        const remoteLength = remote.headers.get("content-length");
+        if (remoteLength) headers.set("Content-Length", remoteLength);
+        return new NextResponse(remote.body, { status: remote.status, headers });
+      } catch (cause) {
+        const status = cause instanceof ReleaseStoreError ? cause.status : 503;
+        return NextResponse.json({ error: cause instanceof Error ? cause.message : "Stored file is temporarily unavailable." }, { status });
+      }
+    }
     const localStream = record.cloudStatus === "uploaded" && await isLocallyCached(record)
       ? { remoteStream: streamFileFromLocal(record) }
       : null;
     const stored = localStream || streamStoredFile(record);
     if (!stored) return NextResponse.json({ error: "Stored file is temporarily unavailable." }, { status: 503 });
     const body = Readable.toWeb(stored.remoteStream) as unknown as ReadableStream;
-    const inline = record.type.startsWith("image/") || record.type.startsWith("video/");
-    const expectedVersion = record.sha256 || record.uploadedAt;
-    const cacheable = inline && req.nextUrl.searchParams.get("v") === expectedVersion;
     return new NextResponse(body, { headers: responseHeaders(record, inline, record.size, cacheable) });
   }
   return NextResponse.json({ files: listFiles(), storage: await storagePayload() }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   if (!(await isDevAuthorized())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const contentLength = Number(req.headers.get("content-length") || 0);
-  if (contentLength > MAX_UPLOAD_REQUEST_BYTES + 1024 * 1024) return NextResponse.json({ error: "This upload exceeds the total upload limit" }, { status: 413 });
-
-  const storage = await getTieredStorageStatus();
-  if (!storage.combined.configured) return NextResponse.json({ error: storage.combined.message || "Storage is not configured." }, { status: 503 });
-
-  const form = await req.formData();
-  const categoryValue = form.get("category");
-  const category: UploadCategory = typeof categoryValue === "string" && isUploadCategory(categoryValue) ? categoryValue : "work";
-  const folderValue = form.get("folderPath");
-  const folderPath = typeof folderValue === "string" ? folderValue : "";
-  if (!isValidFolderPath(folderPath)) return NextResponse.json({ error: "Invalid folder path" }, { status: 400 });
-  if (!fileFolderExists(category, folderPath)) return NextResponse.json({ error: "Folder not found" }, { status: 404 });
-  const files = form.getAll("files").filter((value): value is File => value instanceof File);
-  if (files.length === 0) return NextResponse.json({ error: "Choose at least one file" }, { status: 400 });
-  if (files.length > MAX_UPLOAD_FILES) return NextResponse.json({ error: `You can upload at most ${MAX_UPLOAD_FILES} files at a time` }, { status: 413 });
-  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
-  if (totalBytes > MAX_UPLOAD_REQUEST_BYTES) return NextResponse.json({ error: "This upload exceeds the total upload limit" }, { status: 413 });
-  const tooLarge = files.find((file) => file.size > MAX_UPLOAD_FILE_BYTES);
-  if (tooLarge) return NextResponse.json({ error: `${tooLarge.name} is larger than the per-file limit` }, { status: 413 });
-
-  const reservation = reserveTieredUploads(files.map((file) => file.size), storage);
-  if (!reservation) return NextResponse.json({ error: "There is not enough storage remaining for this upload." }, { status: 413 });
-
-  try {
-    const identity = await currentDevIdentity();
-    const uploaded: PublicFile[] = [];
-    const duplicates: Array<{ incomingName: string; existing: PublicFile }> = [];
-    for (let index = 0; index < files.length; index += 1) {
-      const file = files[index];
-      const destination = reservation.destinations[index];
-      const name = storedFileName(file.name);
-      const timestamp = new Date().toISOString();
-      const record: FileRecord = {
-        name,
-        originalName: originalNameFromStored(name),
-        size: file.size,
-        type: mimeTypeForName(name),
-        modifiedAt: timestamp,
-        uploadedAt: timestamp,
-        category,
-        folderPath,
-        uploaderId: identity.id,
-        uploaderName: identity.name,
-        sha256: null,
-        cloudStatus: "pending",
-        cloudError: null,
-      };
-      saveFileRecord(record);
-      const result = await storeStreamWithHash(destination, record, file.stream() as unknown as import("node:stream/web").ReadableStream, file.size);
-      if (result.sha256) updateFileHash(name, result.sha256);
-      const saved = getFileRecord(name) || { ...record, cloudStatus: result.status, cloudError: result.status === "failed" ? "Upload failed." : null };
-      if (result.status === "failed" || result.status === "not_configured") {
-        return NextResponse.json({ ok: false, files: uploaded, duplicates, storage: await storagePayload(), error: `Could not store ${file.name}.` }, { status: 502 });
-      }
-      const duplicate = result.sha256 ? findFileRecordByHash(result.sha256, name, record.category, record.folderPath) : null;
-      if (duplicate) {
-        const removed = await deleteStoredFile(saved);
-        if (removed) {
-          deleteFileRecord(name);
-          duplicates.push({ incomingName: file.name, existing: publicFile(duplicate) });
-          continue;
-        }
-      }
-      const current = getFileRecord(name) || saved;
-      uploaded.push(publicFile(current));
-    }
-    return NextResponse.json({ ok: true, files: uploaded, duplicates, storage: await storagePayload() });
-  } finally {
-    releaseTieredUploads(reservation);
-  }
+  return NextResponse.json(
+    { error: "Use the resumable GitHub Releases upload endpoint." },
+    { status: 405, headers: { "Allow": "GET, PATCH, DELETE" } },
+  );
 }
 
 export async function PATCH(req: NextRequest) {
@@ -201,10 +149,13 @@ export async function DELETE(req: NextRequest) {
   const record = getFileRecord(name);
   if (!record || (categoryParam && record.category !== categoryParam)) return NextResponse.json({ error: "File not found" }, { status: 404 });
   if (record.cloudStatus === "pending") return NextResponse.json({ error: "This file is still uploading. Try again when it finishes." }, { status: 409 });
-  if ((record.cloudStatus === "uploaded" || record.cloudStatus === "local") && !(await deleteStoredFile(record))) {
+  const removed = record.storageBackend === "release_store"
+    ? await deleteReleaseStoreFile(record.name)
+    : await deleteStoredFile(record);
+  if ((record.cloudStatus === "uploaded" || record.cloudStatus === "local") && !removed) {
     return NextResponse.json({ error: "Could not delete the stored file." }, { status: 502 });
   }
-  await removeLocalCache(record);
+  if (record.storageBackend === "tiered") await removeLocalCache(record);
   await deleteFileThumbnail(record.name);
   deleteFileRecord(record.name);
   return NextResponse.json({ ok: true, storage: await storagePayload() });

@@ -24,6 +24,8 @@ export type UploadSessionResult = {
 
 export type UploadSession = {
   id: string;
+  releaseStoreId: string;
+  releaseStoreName: string;
   category: UploadCategory;
   folderPath: string;
   originalName: string;
@@ -37,6 +39,8 @@ export type UploadSession = {
   createdAt: string;
   updatedAt: string;
   complete?: boolean;
+  finalizing?: boolean;
+  sha256?: string | null;
   result?: UploadSessionResult;
   duplicate?: boolean;
 };
@@ -62,13 +66,14 @@ export function uploadPayloadPath(id: string) {
   return path.join(sessionDirectory(id), "payload.partial");
 }
 
-export async function createUploadSession(input: Omit<UploadSession, "id" | "chunkSize" | "receivedBytes" | "createdAt" | "updatedAt">) {
+export async function createUploadSession(
+  input: Omit<UploadSession, "id" | "receivedBytes" | "createdAt" | "updatedAt">,
+) {
   const id = randomUUID();
   const now = new Date().toISOString();
   const session: UploadSession = {
     ...input,
     id,
-    chunkSize: UPLOAD_CHUNK_BYTES,
     receivedBytes: 0,
     createdAt: now,
     updatedAt: now,
