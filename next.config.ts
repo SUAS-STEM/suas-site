@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
   },
   devIndicators: false,
   allowedDevOrigins: ["dev.suasstem.org"],
+  experimental: {
+    // release-store resumable uploads can use large parts. Next otherwise
+    // truncates proxied request bodies at its 10 MiB default before the route
+    // handler can forward the complete part to release-store.
+    proxyClientMaxBodySize: "90mb",
+  },
   async headers() {
     return [
       {
