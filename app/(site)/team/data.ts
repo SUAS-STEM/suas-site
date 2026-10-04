@@ -1,7 +1,7 @@
 import { CardInfo, Member, Rank } from "./types";
 
-export const APPLY_FORM_URL = "https://forms.cloud.microsoft/r/9mH58395cf";
-export const DEFAULT_LINK_TEXT = "Apply to SUAS@STEM";
+export const INTEREST_FORM_URL = "https://forms.cloud.microsoft/r/9mH58395cf";
+export const DEFAULT_LINK_TEXT = "Fill Out Interest Form";
 
 export const sectionCards: Record<string, CardInfo[]> = {
     Flight: [
@@ -27,8 +27,8 @@ export const sectionCards: Record<string, CardInfo[]> = {
             linkText: "Learn More",
             description:
                 "The Avionics Lead will oversee the design, integration, and testing of the aircraft's electrical systems as well as coordinating the Avionics subsystem and working closely with the Technical Manager and other subsystem leads.",
-            note: "This position is not open to direct applications. We plan to select the next Avionics Lead from within the team after new member recruitment and training, based on demonstrated technical ability, reliability, communication, and leadership. New members interested in eventually taking on this role are encouraged to join the Avionics subsystem and develop their skills with the team.",
-            url: APPLY_FORM_URL,
+            note: "This is not a direct entry position. We plan to select the next Avionics Lead from within the team after new member recruitment and training, based on demonstrated technical ability, reliability, communication, and leadership. New members interested in eventually taking on this role are encouraged to join the Avionics subsystem and develop their skills with the team.",
+            url: INTEREST_FORM_URL,
         },
         {
             subsystem: "Avionics",

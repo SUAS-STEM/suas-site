@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { INTEREST_FORM_URL } from "./team/data";
 
 export default function Home() {
     return (
@@ -36,17 +37,19 @@ export default function Home() {
                             computer vision, and payload delivery.
                         </p>
                         <p className="text-gray-300 max-w-xl mb-8">
-                            2026 is the first year of SUAS@STEM. We are currently designing and
-                            testing our fourth aircraft, Event Horizon-4, and are excited to
-                            represent Tesla STEM High School at Skyway Range in Tulsa, Oklahoma
-                            later this year.
+                            2026-2027 is the second year for SUAS@STEM. We are currently engineering
+                            and building our fifth aircraft, Event Horizon-5, and are excited to
+                            represent Tesla STEM High School at Skyway Range in Tulsa, Oklahoma in
+                            2027.
                         </p>
 
                         <a
-                            href="/team"
-                            className="inline-flex items-center gap-3 bg-teal-400 hover:bg-teal-500 text-black font-semibold px-6 py-3 rounded-full shadow-lg"
+                            href={INTEREST_FORM_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="join-modal-apply"
                         >
-                            Learn more <span aria-hidden>→</span>
+                            Interest form is now open! <span aria-hidden>→</span>
                         </a>
                     </div>
 
