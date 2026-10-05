@@ -14,13 +14,13 @@ function sessionSecret(): string | undefined {
 export function expectedDevToken(deviceId?: string): string | null {
   const secret = sessionSecret();
   if (!secret || !deviceId) return null;
-  return createHmac("sha256", secret).update(`dev-auth:${deviceId}`).digest("base64url");
+  return createHmac("sha256", secret).update(`dev-auth-v2:${deviceId}`).digest("base64url");
 }
 
 function expectedAdminToken(deviceId: string): string | null {
   const secret = sessionSecret();
   if (!secret || !deviceId) return null;
-  return createHmac("sha256", secret).update(`dev-admin:${deviceId}`).digest("base64url");
+  return createHmac("sha256", secret).update(`dev-admin-v2:${deviceId}`).digest("base64url");
 }
 
 export async function isDevAuthorized(): Promise<boolean> {

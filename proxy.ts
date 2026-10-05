@@ -28,7 +28,11 @@ async function makeToken(secret: string, deviceId?: string): Promise<string> {
     false,
     ["sign"]
   );
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(deviceId ? `dev-auth:${deviceId}` : "dev-auth"));
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(deviceId ? `dev-auth-v2:${deviceId}` : "dev-auth-v2"),
+  );
   return btoa(String.fromCharCode(...new Uint8Array(sig)))
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
