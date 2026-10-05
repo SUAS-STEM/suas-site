@@ -1,0 +1,45 @@
+.pageMain {
+  padding-inline: 2rem;
+}
+
+.heroGrid {
+  display: grid;
+  width: min(100%, 80rem);
+  margin-inline: auto;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 2rem;
+  row-gap: 2rem;
+}
+
+.heroPhoto {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.photoFrame {
+  width: min(100%, 38rem);
+  aspect-ratio: 3592 / 2445;
+  padding: 0;
+  border-radius: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .pageMain {
+    padding-inline: clamp(6rem, 8vw, 8rem);
+  }
+}
+
+@media (max-width: 767px) {
+  .heroGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .heroPhoto {
+    justify-content: center;
+  }
+
+  .photoFrame {
+    width: min(100%, 34rem);
+  }
+}

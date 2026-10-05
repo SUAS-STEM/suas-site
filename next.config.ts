@@ -66,6 +66,7 @@ const nextConfig: NextConfig = {
     };
   },
   images: {
+    qualities: [75, 100],
     // Serve AVIF when the browser supports it (falls back to WebP), so the
     // optimizer produces smaller files than the WebP-only default. Source
     // files in public/images are never modified — these copies are generated

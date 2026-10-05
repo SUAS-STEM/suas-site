@@ -6,7 +6,7 @@ import { JoinModal } from "./JoinModal";
 import { MemberModal } from "./MemberModal";
 import { MemberPhoto } from "./MemberPhoto";
 import stylesModule from "./team.module.css";
-import { cardEnabledSubsystems, DEFAULT_LINK_TEXT, pastMembers, sectionCards, sections } from "./data";
+import { cardEnabledSubsystems, pastMembers, sectionCards, sections } from "./data";
 import { styles } from "./styles";
 import { CardInfo, Member, Rank, getRole, getSubsystemIcon } from "./types";
 
@@ -24,7 +24,7 @@ function InfoCard({ card, onOpen }: { card: CardInfo; onOpen: () => void }): Rea
             <div style={styles.name}>{card.title}</div>
             {card.subtitle ? <div style={styles.name}>{card.subtitle}</div> : null}
             <div style={styles.role} className="join-card-link">
-                <span>{card.linkText ?? DEFAULT_LINK_TEXT}</span>
+                <span>{card.linkText ?? "Learn More"}</span>
                 <Image src="/images/icons/forward.svg" width={14} height={14} alt="" aria-hidden="true" />
             </div>
         </button>

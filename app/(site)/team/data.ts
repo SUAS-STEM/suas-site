@@ -1,7 +1,7 @@
 import { CardInfo, Member, Rank } from "./types";
 
 export const INTEREST_FORM_URL = "https://forms.cloud.microsoft/r/9mH58395cf";
-export const DEFAULT_LINK_TEXT = "Fill Out Interest Form";
+export const DEFAULT_LINK_TEXT = "Build Event Horizon-5 With Us";
 
 export const sectionCards: Record<string, CardInfo[]> = {
     Flight: [
