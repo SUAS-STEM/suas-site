@@ -14,6 +14,11 @@ state_file="$deploy_root/deployed-sha"
 compose="$root/deploy/docker-compose.actions.yml"
 
 mkdir -p "$releases"
+exec 9>"$deploy_root/.deploy.lock"
+if ! flock -n 9; then
+  echo "Another SUAS production deployment is already running"
+  exit 0
+fi
 
 sha="$(gh api "repos/${source_repo}/commits/${source_branch}" --jq .sha)"
 [[ -n "$sha" ]] || { echo "Could not resolve ${source_repo}@${source_branch}" >&2; exit 1; }
@@ -24,7 +29,7 @@ if [[ -f "$state_file" && "$(cat "$state_file")" == "$sha" ]]; then
 fi
 
 runs_json="$(gh run list --repo "$build_repo" --workflow "$workflow" --limit 40 --json databaseId,displayTitle,status,conclusion)"
-match="$(printf '%s' "$runs_json" | SOURCE_SHA="$sha" CHANNEL="$channel" python3 -c 'import json,os,sys; title=f"SUAS {os.environ["CHANNEL"]} {os.environ["SOURCE_SHA"]}"; rows=[r for r in json.load(sys.stdin) if r.get("displayTitle")==title]; ok=next((r for r in rows if r.get("status")=="completed" and r.get("conclusion")=="success"),None); active=next((r for r in rows if r.get("status") in ("queued","in_progress","waiting","pending")),None); r=ok or active; print((str(r["databaseId"])+"\t"+r["status"]+"\t"+str(r.get("conclusion") or "")) if r else "")')"
+match="$(printf '%s' "$runs_json" | SOURCE_SHA="$sha" CHANNEL="$channel" python3 -c 'import json,os,sys; title=f"SUAS {os.environ["CHANNEL"]} {os.environ["SOURCE_SHA"]}"; rows=[r for r in json.load(sys.stdin) if r.get("displayTitle")==title]; ok=next((r for r in rows if r.get("status")=="completed" and r.get("conclusion")=="success"),None); active=next((r for r in rows if r.get("status") in ("queued","in_progress","waiting","pending")),None); completed=next((r for r in rows if r.get("status")=="completed"),None); r=ok or active or completed; print((str(r["databaseId"])+"\t"+r["status"]+"\t"+str(r.get("conclusion") or "")) if r else "")')"
 
 if [[ -z "$match" ]]; then
   gh workflow run "$workflow" --repo "$build_repo" --ref main -f source_ref="$sha" -f channel="$channel"
@@ -51,8 +56,35 @@ fi
 
 gh run download "$run_id" --repo "$build_repo" --name pi-standalone --dir "$tmp"
 test -s "$tmp/pi-standalone.tar.gz"
+
+# Validate archive members before extraction. The one intentional absolute
+# symlink is .next/cache -> /var/cache so the read-only app can use its
+# dedicated writable cache volume.
+python3 - "$tmp/pi-standalone.tar.gz" <<'PY'
+import posixpath
+import sys
+import tarfile
+
+archive = sys.argv[1]
+with tarfile.open(archive, "r:gz") as tar:
+    for member in tar.getmembers():
+        name = member.name.removeprefix("./")
+        normalized = posixpath.normpath(name)
+        if not name or name.startswith("/") or normalized == ".." or normalized.startswith("../"):
+            raise SystemExit(f"Unsafe artifact path: {member.name!r}")
+        if member.isdev() or member.isfifo():
+            raise SystemExit(f"Unsafe artifact member type: {member.name!r}")
+        if member.issym() or member.islnk():
+            link = member.linkname
+            if name == ".next/cache" and link == "/var/cache":
+                continue
+            resolved = posixpath.normpath(posixpath.join(posixpath.dirname(name), link))
+            if link.startswith("/") or resolved == ".." or resolved.startswith("../"):
+                raise SystemExit(f"Unsafe artifact link: {member.name!r} -> {link!r}")
+PY
+
 mkdir "$tmp/unpacked"
-tar -xzf "$tmp/pi-standalone.tar.gz" -C "$tmp/unpacked"
+tar --no-same-owner --no-same-permissions -xzf "$tmp/pi-standalone.tar.gz" -C "$tmp/unpacked"
 test -s "$tmp/unpacked/server.js"
 test -d "$tmp/unpacked/.next/static"
 test -d "$tmp/unpacked/public"
@@ -104,7 +136,11 @@ fi
 
 ok=0
 for _ in $(seq 1 45); do
-  if curl -fsS -H 'Host: suasstem.org' http://127.0.0.1:3000/ >/dev/null 2>&1; then ok=1; break; fi
+  if curl -fsS -H 'Host: suasstem.org' http://127.0.0.1:3000/api/health >/dev/null 2>&1 \
+    && curl -fsS -H 'Host: suasstem.org' http://127.0.0.1:3000/ >/dev/null 2>&1; then
+    ok=1
+    break
+  fi
   sleep 1
 done
 if [[ "$ok" != 1 ]]; then
@@ -118,7 +154,9 @@ PURGE_SPECS=("261927ed64694e8857b81a0ee0ab6d8f|https://suasstem.org/|https://sua
 WARM_SPECS=("https://suasstem.org|/|/aircraft|/gallery|/sponsor|/ssgcs|/team|/status|/api/images|/api/status")
 run_post_deploy_admin PURGE_SPECS WARM_SPECS
 
-printf '%s\n' "$sha" > "$state_file"
+state_tmp="$state_file.tmp.$$"
+printf '%s\n' "$sha" > "$state_tmp"
+mv -f "$state_tmp" "$state_file"
 find "$releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | tail -n +5 | cut -d' ' -f2- | while IFS= read -r old; do
   [[ -n "$old" && "$old" != "$release" ]] && rm -rf "$old"
 done
