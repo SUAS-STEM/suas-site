@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import titleStyles from "../page-title.module.css";
 import {
     DURABLE_GALLERY_BASE,
     GALLERY_DISPLAY,
@@ -107,7 +108,7 @@ export default function GalleryPage() {
         <main className="text-white font-sans py-8">
             <section className="px-0 md:px-6 max-sm:mt-12">
                 <div className="max-w-6xl mx-auto text-center">
-                    <h1>Gallery</h1>
+                    <h1 className={titleStyles.pageTitle}>Gallery</h1>
                     <div className="mb-6 flex justify-center">
                         <button
                             type="button"

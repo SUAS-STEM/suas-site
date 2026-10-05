@@ -6,6 +6,7 @@ import { JoinModal } from "./JoinModal";
 import { MemberModal } from "./MemberModal";
 import { MemberPhoto } from "./MemberPhoto";
 import stylesModule from "./team.module.css";
+import titleStyles from "../page-title.module.css";
 import { cardEnabledSubsystems, pastMembers, sectionCards, sections } from "./data";
 import { styles } from "./styles";
 import { CardInfo, Member, Rank, getRole, getSubsystemIcon } from "./types";
@@ -50,38 +51,42 @@ export default function TeamContent(): ReactElement {
         }, MODAL_TRANSITION_MS);
     }, [isJoinClosing, joinInfo]);
 
-    const allMembers = useMemo(
-        () => [
-            ...sections.flatMap((section) =>
+    const currentMembers = useMemo(
+        () =>
+            sections.flatMap((section) =>
                 [...section.members]
                     .sort((a, b) => (a.rank === Rank.Lead ? -1 : b.rank === Rank.Lead ? 1 : 0))
                     .map((member) => ({ ...member, subsystem: section.title })),
             ),
-            ...pastMembers,
-        ],
         [],
     );
+    const navigationMembers = selectedMember && pastMembers.some(
+        (member) =>
+            member.name === selectedMember.name && member.subsystem === selectedMember.subsystem,
+    )
+        ? pastMembers
+        : currentMembers;
 
     const selectedMemberIndex = useMemo(() => {
         if (!selectedMember) return -1;
-        return allMembers.findIndex(
+        return navigationMembers.findIndex(
             (member) =>
                 member.name === selectedMember.name &&
                 member.subsystem === selectedMember.subsystem,
         );
-    }, [allMembers, selectedMember]);
+    }, [navigationMembers, selectedMember]);
 
     const toMember = useCallback(
         (offset: number): void => {
-            if (selectedMemberIndex < 0 || allMembers.length === 0 || isClosing) return;
+            if (selectedMemberIndex < 0 || navigationMembers.length === 0 || isClosing) return;
             const directionClass = offset < 0 ? "member-switch-prev-in" : "member-switch-next-in";
             const nextIndex =
-                (selectedMemberIndex + offset + allMembers.length) % allMembers.length;
+                (selectedMemberIndex + offset + navigationMembers.length) % navigationMembers.length;
 
-            setSelectedMember(allMembers[nextIndex]);
+            setSelectedMember(navigationMembers[nextIndex]);
             setSwitchClass(directionClass);
         },
-        [allMembers, isClosing, selectedMemberIndex],
+        [navigationMembers, isClosing, selectedMemberIndex],
     );
 
     const previous = useCallback((): void => {
@@ -153,7 +158,7 @@ export default function TeamContent(): ReactElement {
                         <div className="eyebrow eyebrow--center" style={{ marginBottom: 14 }}>
                             SUAS @Tesla STEM High School
                         </div>
-                        <h1 style={styles.heroTitle}>The Flight Crew</h1>
+                        <h1 className={titleStyles.pageTitle} style={styles.heroTitle}>The Flight Crew</h1>
                         <p style={styles.heroSubtitle}>
                             We are a team of eighteen students from Tesla STEM High School, ranked
                             #1 in Washington state and #9 nationally by{" "}

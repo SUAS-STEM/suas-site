@@ -1,0 +1,4 @@
+.pageTitle {
+  white-space: nowrap;
+  font-size: clamp(1.75rem, 10vw, 3rem);
+}

@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import titleStyles from "../page-title.module.css";
 
 function gradientAccent(index: number, count: number) {
     const t = count > 1 ? index / (count - 1) : 0;
@@ -42,7 +43,7 @@ export default function AircraftPage() {
         <main className="text-white font-sans min-h-full flex-1 px-4 md:px-24 md:py-16 py-8 flex flex-col">
             <section className="px-0 md:px-6 max-sm:mt-12">
                 <div style={{ maxWidth: 900, margin: "0 auto" }}>
-                    <h1>Event Horizon-4</h1>
+                    <h1 className={titleStyles.pageTitle}>Event Horizon-4</h1>
 
                     <p>
                         Event Horizon-4 (EH-4) is the fourth aircraft in a generation of large,

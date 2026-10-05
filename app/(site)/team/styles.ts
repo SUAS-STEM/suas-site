@@ -12,7 +12,6 @@ export const styles: Record<string, CSSProperties> = {
         marginBottom: "3.5rem",
     },
     heroTitle: {
-        fontSize: "3.25rem",
         lineHeight: 1.05,
         fontWeight: 800,
         letterSpacing: "-0.02em",

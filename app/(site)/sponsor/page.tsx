@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import titleStyles from "../page-title.module.css";
 
 export default function SponsorPage() {
   const [name, setName] = useState("");
@@ -77,7 +78,7 @@ export default function SponsorPage() {
         }
       `}</style>
       <div className="w-full max-w-3xl">
-        <h1 className="text-6xl font-extrabold mb-3 text-left">Contact</h1>
+        <h1 className={`${titleStyles.pageTitle} font-extrabold mb-3 text-left`}>Contact</h1>
         <p className="text-gray-300 !mb-10 max-w-2xl">
           Help send SUAS@STEM to the competition. Whether it&apos;s funding, parts, or
           mentorship, we&apos;d love to hear from you — drop us a note below and we&apos;ll get
