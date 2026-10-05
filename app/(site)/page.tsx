@@ -68,6 +68,7 @@ export default function Home() {
                                     fill
                                     sizes="(max-width: 768px) calc(100vw - 4rem), 64rem"
                                     quality={100}
+                                    preload
                                     className="object-cover"
                                 />
                             </div>
