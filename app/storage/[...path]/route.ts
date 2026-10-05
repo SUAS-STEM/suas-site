@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isDevAuthorized } from "@/lib/devAdminAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +28,13 @@ function responseHeaders(response: Response): Headers {
 }
 
 async function forward(request: NextRequest, context: RouteContext) {
+  if (!(await isDevAuthorized())) {
+    return new NextResponse("Not found", {
+      status: 404,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+
   const { path } = await context.params;
   if (!path?.length) return NextResponse.json({ error: "file name is required" }, { status: 400 });
 

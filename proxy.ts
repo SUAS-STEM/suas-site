@@ -13,6 +13,7 @@ const PROTECTED_PREFIXES = [
   "/api/links",
   "/api/dev-files",
   "/api/dev-params",
+  "/storage",
 ];
 
 function isProtected(pathname: string): boolean {
