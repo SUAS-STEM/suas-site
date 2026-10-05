@@ -57,6 +57,23 @@ test -s "$tmp/unpacked/server.js"
 test -d "$tmp/unpacked/.next/static"
 test -d "$tmp/unpacked/public"
 
+# Production artifacts must never contain plaintext material fetched from the
+# private suas-internal repository or copied runtime secret files. Refuse the
+# deployment rather than relying only on application routing for secrecy.
+for forbidden in \
+  "$tmp/unpacked/internal/wiki" \
+  "$tmp/unpacked/internal/wiki-images" \
+  "$tmp/unpacked/internal/data"; do
+  if [[ -e "$forbidden" ]]; then
+    echo "Refusing production artifact containing private internal material: $forbidden" >&2
+    exit 1
+  fi
+done
+if find "$tmp/unpacked" -maxdepth 3 -type f \( -name '.env' -o -name '.env.*' \) -print -quit | grep -q .; then
+  echo "Refusing production artifact containing an environment file" >&2
+  exit 1
+fi
+
 if [[ ! -d "$release" ]]; then
   mkdir "$release_tmp"
   cp -a "$tmp/unpacked"/. "$release_tmp"/

@@ -8,6 +8,19 @@ const REF = process.env.INTERNAL_REF || "main";
 const TARGET = path.resolve(process.cwd(), "internal");
 const token = process.env.GITHUB_TOKEN;
 const actionsRepository = process.env.GITHUB_REPOSITORY;
+const buildChannel = (process.env.SUAS_BUILD_CHANNEL || "").trim().toLowerCase();
+
+function installFallback() {
+  if (existsSync(TARGET)) {
+    rmSync(TARGET, { recursive: true, force: true });
+  }
+  const fallbackDir = path.join(TARGET, "pages");
+  mkdirSync(fallbackDir, { recursive: true });
+  writeFileSync(
+    path.join(fallbackDir, "Ssgcs.tsx"),
+    `export default function SsgcsFallback() {\n  return null;\n}\n`,
+  );
+}
 
 // Defense in depth: suas-site is public. Private source must never be fetched
 // by a workflow running in this repository, because any uploaded build
@@ -21,13 +34,17 @@ if (process.env.GITHUB_ACTIONS === "true" && actionsRepository === "SUAS-STEM/su
   process.exit(1);
 }
 
+// Production must never receive private repository material, even when the
+// caller accidentally provides a GitHub token. The public site only needs a
+// compile-time placeholder for the private dev-only SSGCS tab.
+if (buildChannel === "prod") {
+  installFallback();
+  console.log("[fetch-internal] Production build — private source intentionally omitted.");
+  process.exit(0);
+}
+
 if (!token) {
-  const fallbackDir = path.join(TARGET, "pages");
-  mkdirSync(fallbackDir, { recursive: true });
-  writeFileSync(
-    path.join(fallbackDir, "Ssgcs.tsx"),
-    `export default function SsgcsFallback() {\n  return null;\n}\n`,
-  );
+  installFallback();
   console.warn("[fetch-internal] GITHUB_TOKEN not set — using the local SSGCS preview fallback.");
   process.exit(0);
 }
