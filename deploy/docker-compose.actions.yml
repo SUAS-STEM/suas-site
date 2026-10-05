@@ -47,12 +47,12 @@ services:
       # optimize an image once without producing ENOENT/unhandled-rejection
       # errors or reprocessing it on every request.
       - suas_next_cache:/var/cache
-      - suas_data:/data
+      - suas_sponsors_data:/data
       - /home/pi/suas-status:/run/suas-status:ro
 
 volumes:
   suas_next_cache:
     name: suas-site_suas_next_cache
-  suas_data:
+  suas_sponsors_data:
     external: true
-    name: suas-site_suas_data
+    name: suas-site_sponsors_data
