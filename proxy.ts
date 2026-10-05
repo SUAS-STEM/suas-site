@@ -97,7 +97,9 @@ export async function proxy(req: NextRequest) {
   }
 
   if (isProtected(pathname) && !isDevHost && !isLocalPreview) {
-    if (pathname.startsWith("/api/")) return new NextResponse("Not Found", { status: 404 });
+    if (pathname.startsWith("/api/") || pathname === "/storage" || pathname.startsWith("/storage/")) {
+      return new NextResponse("Not Found", { status: 404 });
+    }
     return NextResponse.redirect(new URL(pathname + req.nextUrl.search, DEV_ORIGIN));
   }
 
