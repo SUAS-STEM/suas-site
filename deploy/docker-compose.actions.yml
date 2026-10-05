@@ -2,12 +2,24 @@ name: suas-site
 
 services:
   suas-site:
-    image: node:20-bookworm-slim
+    image: node:24-bookworm-slim
     container_name: suas-site
     restart: unless-stopped
     working_dir: /app
     user: "0:0"
     command: ["/usr/local/bin/suas-site-entrypoint"]
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 768m
+    cpus: 2.0
     environment:
       NODE_ENV: production
       PORT: "3000"
@@ -15,11 +27,18 @@ services:
       SPONSOR_DB_PATH: /data/sponsors.db
     ports:
       - "127.0.0.1:3000:3000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    env_file:
-      - /home/pi/suas-site/.env.local
-      - /home/pi/suas-site-dev/.env.local
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=64m,mode=1777,uid=1001,gid=1001
     volumes:
       - /home/pi/suas-site-deploy/current:/app:ro
       - /home/pi/suas-site/deploy/production-entrypoint.sh:/usr/local/bin/suas-site-entrypoint:ro
@@ -27,7 +46,7 @@ services:
       # derivatives in a writable volume so an uncached Cloudflare POP can
       # optimize an image once without producing ENOENT/unhandled-rejection
       # errors or reprocessing it on every request.
-      - suas_next_cache:/app/.next/cache
+      - suas_next_cache:/var/cache
       - suas_data:/data
       - /home/pi/suas-status:/run/suas-status:ro
 

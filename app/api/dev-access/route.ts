@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { notifyAccessRequest } from "@/lib/accessRequestEmail";
 import { isDevAdmin, isDevAuthorized, setDeviceSession } from "@/lib/devAdminAuth";
+import { checkRateLimit, readBoundedText, requestClientIp } from "@/lib/rateLimit";
 import {
   getDeviceAccess,
   getDeviceAccessByPhrase,
@@ -16,6 +17,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const DEVICE_ID_PATTERN = /^[A-Za-z0-9_-]{20,128}$/;
+const MAX_REQUEST_BODY_BYTES = 16 * 1024;
 
 function isDevHost(req: NextRequest) {
   const host = (req.headers.get("host") || "").replace(/:\d+$/, "").toLowerCase();
@@ -57,7 +59,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (!isDevHost(req)) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const body = await req.json().catch(() => ({}));
+  const raw = await readBoundedText(req, MAX_REQUEST_BODY_BYTES);
+  if (raw === null) return NextResponse.json({ error: "Request too large" }, { status: 413 });
+  const body = (() => {
+    try { return JSON.parse(raw) as Record<string, unknown>; } catch { return {}; }
+  })();
   const action = body?.action;
 
   if (action === "request") {
@@ -65,6 +71,16 @@ export async function POST(req: NextRequest) {
     const name = typeof body?.name === "string" ? body.name.trim() : "";
     if (!validDeviceId(deviceId)) return NextResponse.json({ error: "Invalid device" }, { status: 400 });
     if (name.length < 2 || name.length > 80) return NextResponse.json({ error: "Name must be between 2 and 80 characters" }, { status: 400 });
+    const ip = requestClientIp(req);
+    const ipLimit = checkRateLimit("dev-access-ip", ip, 5, 15 * 60 * 1000);
+    const deviceLimit = checkRateLimit("dev-access-device", deviceId, 3, 60 * 60 * 1000);
+    if (!ipLimit.allowed || !deviceLimit.allowed) {
+      const retryAfter = Math.max(ipLimit.retryAfterSeconds, deviceLimit.retryAfterSeconds);
+      return NextResponse.json(
+        { error: "Too many access requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
+    }
     const request = requestDeviceAccess(deviceId, name, req.headers.get("user-agent") || "");
     const response = NextResponse.json({ status: request.status, requestId: request.id, phrase: request.phrase }, { status: 202 });
     if (request.status === "approved") setDeviceSession(response, deviceId, isPermanentAdmin(deviceId));

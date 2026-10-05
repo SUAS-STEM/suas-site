@@ -8,7 +8,7 @@
     "prebuild": "npm run fetch:internal && npm run gallery:manifest",
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "rm -rf .next/standalone/public .next/standalone/.next/static && cp -r public .next/standalone/public && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/static",
+    "postbuild": "rm -rf .next/standalone/public .next/standalone/.next/static .next/standalone/.next/cache && cp -r public .next/standalone/public && mkdir -p .next/standalone/.next && ln -s /var/cache .next/standalone/.next/cache && cp -r .next/static .next/standalone/.next/static",
     "start": "next start",
     "lint": "eslint",
     "gallery:manifest": "node scripts/generate-gallery-manifest.mjs"
@@ -21,7 +21,7 @@
     "firebase": "^12.13.0",
     "framer-motion": "^12.23.24",
     "fuse.js": "^7.5.0",
-    "next": "^16.2.6",
+    "next": "^16.3.6",
     "next-page-transitions": "^1.0.0-beta.2",
     "react": "19.2.0",
     "react-dom": "19.2.0",
@@ -38,8 +38,11 @@
     "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.10.0",
     "eslint": "^9",
-    "eslint-config-next": "16.0.1",
+    "eslint-config-next": "^16.3.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.5"
   }
 }

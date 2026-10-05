@@ -5,18 +5,22 @@ import { getDeviceAccess, isPermanentAdmin } from "@/lib/devAccess";
 const COOKIE = "dev_auth";
 const DEVICE_COOKIE = "dev_device";
 const ADMIN_COOKIE = "dev_admin";
-const SESSION_MAX_AGE = 60 * 60 * 24 * 365 * 10;
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
+
+function sessionSecret(): string | undefined {
+  return process.env.DEV_SESSION_SECRET || process.env.PASSWORD;
+}
 
 export function expectedDevToken(deviceId?: string): string | null {
-  const password = process.env.PASSWORD;
-  if (!password || !deviceId) return null;
-  return createHmac("sha256", password).update(`dev-auth:${deviceId}`).digest("base64url");
+  const secret = sessionSecret();
+  if (!secret || !deviceId) return null;
+  return createHmac("sha256", secret).update(`dev-auth:${deviceId}`).digest("base64url");
 }
 
 function expectedAdminToken(deviceId: string): string | null {
-  const password = process.env.PASSWORD;
-  if (!password || !deviceId) return null;
-  return createHmac("sha256", password).update(`dev-admin:${deviceId}`).digest("base64url");
+  const secret = sessionSecret();
+  if (!secret || !deviceId) return null;
+  return createHmac("sha256", secret).update(`dev-admin:${deviceId}`).digest("base64url");
 }
 
 export async function isDevAuthorized(): Promise<boolean> {

@@ -2,49 +2,48 @@ import { randomBytes, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requestOrigin } from "@/lib/requestOrigin";
 import { setDeviceSession } from "@/lib/devAdminAuth";
+import { checkRateLimit, readBoundedText, requestClientIp } from "@/lib/rateLimit";
 
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 10;
-const attempts = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = attempts.get(ip);
-  if (!entry || now > entry.resetAt) {
-    attempts.set(ip, { count: 1, resetAt: now + WINDOW_MS });
-    return false;
-  }
-  entry.count++;
-  return entry.count > MAX_ATTEMPTS;
-}
+const MAX_BODY_BYTES = 16 * 1024;
 
 export async function POST(req: NextRequest) {
+  const origin = requestOrigin(req);
+  const ip = requestClientIp(req);
+  const rateLimit = checkRateLimit("dev-auth", ip, MAX_ATTEMPTS, WINDOW_MS);
+  if (!rateLimit.allowed) {
+    const url = new URL("/dev-login", origin);
+    url.searchParams.set("error", "rate-limited");
+    const response = NextResponse.redirect(url, 302);
+    response.headers.set("Retry-After", String(rateLimit.retryAfterSeconds));
+    return response;
+  }
+
+  const text = await readBoundedText(req, MAX_BODY_BYTES);
+  if (text === null) return new NextResponse("Request too large", { status: 413 });
+
   const contentType = req.headers.get("content-type") ?? "";
   let password = "";
   let redirect = "/";
   let deviceId = "";
 
   if (contentType.includes("application/x-www-form-urlencoded")) {
-    const text = await req.text();
     const params = new URLSearchParams(text);
     password = params.get("password") ?? "";
     redirect = params.get("redirect") ?? "/";
     deviceId = params.get("deviceId") ?? "";
   } else {
-    const body = await req.json().catch(() => ({}));
-    password = body.password ?? "";
-    redirect = body.redirect ?? "/";
+    const body = (() => {
+      try { return JSON.parse(text) as Record<string, unknown>; } catch { return {}; }
+    })();
+    password = typeof body.password === "string" ? body.password : "";
+    redirect = typeof body.redirect === "string" ? body.redirect : "/";
     deviceId = typeof body.deviceId === "string" ? body.deviceId : "";
   }
 
-  const origin = requestOrigin(req);
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-  if (isRateLimited(ip)) {
-    const url = new URL("/dev-login", origin);
-    url.searchParams.set("error", "rate-limited");
-    url.searchParams.set("redirect", redirect);
-    return NextResponse.redirect(url, 302);
-  }
+  password = typeof password === "string" ? password : "";
+  redirect = typeof redirect === "string" ? redirect : "/";
 
   const correct = process.env.PASSWORD ?? "";
   if (!correct) {

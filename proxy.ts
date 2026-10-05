@@ -5,17 +5,24 @@ const DEV_HOST = "dev.suasstem.org";
 const DEV_ORIGIN = `https://${DEV_HOST}`;
 const COOKIE = "dev_auth";
 const DEVICE_COOKIE = "dev_device";
-const SESSION_MAX_AGE = 60 * 60 * 24 * 365 * 10;
-const PROTECTED_PREFIXES = ["/dev", "/api/wiki", "/api/links", "/api/dev-files"];
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
+const PROTECTED_PREFIXES = [
+  "/dev",
+  "/api/wiki",
+  "/api/wiki-image",
+  "/api/links",
+  "/api/dev-files",
+  "/api/dev-params",
+];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
-async function makeToken(password: string, deviceId?: string): Promise<string> {
+async function makeToken(secret: string, deviceId?: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(password),
+    new TextEncoder().encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"]
@@ -39,7 +46,7 @@ function setAuthCookies(response: NextResponse, token: string, deviceId: string)
 
 export async function proxy(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
-  const password = process.env.PASSWORD;
+  const secret = process.env.DEV_SESSION_SECRET || process.env.PASSWORD;
   const host = req.headers.get("host")?.replace(/:\d+$/, "") ?? "";
   const isDevHost = host === DEV_HOST;
   const isLocalPreview = host === "localhost" || host === "127.0.0.1";
@@ -69,15 +76,14 @@ export async function proxy(req: NextRequest) {
     const safe = redirectParam.startsWith("/") && !redirectParam.startsWith("//") ? redirectParam : "/";
     const loginUrl = new URL("/dev-login", origin);
 
-    if (!password || !submitted) return NextResponse.redirect(loginUrl);
+    if (!secret || !submitted) return NextResponse.redirect(loginUrl);
 
     const deviceId = req.cookies.get(DEVICE_COOKIE)?.value || crypto.randomUUID();
-    const expected = await makeToken(password, deviceId);
-    const legacyExpected = await makeToken(password);
-    if (submitted !== expected && submitted !== legacyExpected) return NextResponse.redirect(loginUrl);
+    const expected = await makeToken(secret, deviceId);
+    if (submitted !== expected) return NextResponse.redirect(loginUrl);
 
     const res = NextResponse.redirect(new URL(safe, origin));
-    setAuthCookies(res, await makeToken(password, deviceId), deviceId);
+    setAuthCookies(res, expected, deviceId);
     return res;
   }
 
@@ -97,23 +103,17 @@ export async function proxy(req: NextRequest) {
 
   // Fail closed: without a configured password, protected routes are blocked
   // rather than silently served, so a missing env var can't leak internal content.
-  if (!password) {
+  if (!secret) {
     return new NextResponse("Not configured", { status: 503 });
   }
 
   const token = req.cookies.get(COOKIE)?.value;
   const deviceId = req.cookies.get(DEVICE_COOKIE)?.value;
-  const expected = deviceId ? await makeToken(password, deviceId) : "";
+  const expected = deviceId ? await makeToken(secret, deviceId) : "";
   if (token && deviceId && token === expected) {
-    const response = NextResponse.next();
-    setAuthCookies(response, token, deviceId);
-    return response;
-  }
-  if (token === await makeToken(password)) {
-    const upgradedDeviceId = crypto.randomUUID();
-    const response = NextResponse.next();
-    setAuthCookies(response, await makeToken(password, upgradedDeviceId), upgradedDeviceId);
-    return response;
+    // Do not silently extend the cookie forever on every request. Approved
+    // devices can obtain a fresh session from /dev-login when it expires.
+    return NextResponse.next();
   }
 
   if (pathname.startsWith("/api/")) {

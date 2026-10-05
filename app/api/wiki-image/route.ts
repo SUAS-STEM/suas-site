@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isDevAuthorized } from "@/lib/devAdminAuth";
 
 const REPO = "SUAS-STEM/suas-internal";
 
 export async function GET(req: NextRequest) {
+  if (!(await isDevAuthorized())) {
+    return new NextResponse("Not found", {
+      status: 404,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+
   const file = req.nextUrl.searchParams.get("file") ?? "";
 
   if (!/^[a-z0-9-]+\.(jpe?g|png|gif|webp|svg)$/i.test(file)) {
@@ -38,5 +46,12 @@ export async function GET(req: NextRequest) {
     ext === "svg" ? "image/svg+xml" :
     "image/jpeg";
 
-  return new NextResponse(buf, { headers: { "Content-Type": contentType } });
+  return new NextResponse(buf, {
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "private, no-store",
+      "Cloudflare-CDN-Cache-Control": "no-store",
+      Vary: "Cookie",
+    },
+  });
 }
