@@ -4,6 +4,7 @@ set -euo pipefail
 source_repo="SUAS-STEM/suas-site"
 build_repo="eschan145/suas-site-builds"
 workflow="build.yml"
+fallback_workflow="build-fallback.yml"
 source_branch="master"
 channel="prod"
 root="/home/pi/suas-site"
@@ -28,8 +29,9 @@ if [[ -f "$state_file" && "$(cat "$state_file")" == "$sha" ]]; then
   exit 0
 fi
 
-runs_json="$(gh run list --repo "$build_repo" --workflow "$workflow" --limit 40 --json databaseId,displayTitle,status,conclusion)"
-match="$(printf '%s' "$runs_json" | SOURCE_SHA="$sha" CHANNEL="$channel" python3 -c 'import json,os,sys; title=f"SUAS {os.environ["CHANNEL"]} {os.environ["SOURCE_SHA"]}"; rows=[r for r in json.load(sys.stdin) if r.get("displayTitle")==title]; ok=next((r for r in rows if r.get("status")=="completed" and r.get("conclusion")=="success"),None); active=next((r for r in rows if r.get("status") in ("queued","in_progress","waiting","pending")),None); completed=next((r for r in rows if r.get("status")=="completed"),None); r=ok or active or completed; print((str(r["databaseId"])+"\t"+r["status"]+"\t"+str(r.get("conclusion") or "")) if r else "")')"
+primary_runs_json="$(gh run list --repo "$build_repo" --workflow "$workflow" --limit 40 --json databaseId,displayTitle,status,conclusion)"
+fallback_runs_json="$(gh run list --repo "$build_repo" --workflow "$fallback_workflow" --limit 40 --json databaseId,displayTitle,status,conclusion)"
+match="$(printf '%s\n%s\n' "$primary_runs_json" "$fallback_runs_json" | SOURCE_SHA="$sha" CHANNEL="$channel" python3 -c 'import json,os,sys; primary=json.loads(sys.stdin.readline()); fallback=json.loads(sys.stdin.readline()); sha=os.environ["SOURCE_SHA"]; channel=os.environ["CHANNEL"]; ptitle=f"SUAS {channel} {sha}"; ftitle=f"SUAS fallback {channel} {sha}"; p=[r for r in primary if r.get("displayTitle")==ptitle]; f=[r for r in fallback if r.get("displayTitle")==ftitle]; active_states=("queued","in_progress","waiting","pending"); r=next((x for x in p if x.get("status")=="completed" and x.get("conclusion")=="success"),None) or next((x for x in f if x.get("status")=="completed" and x.get("conclusion")=="success"),None) or next((x for x in p if x.get("status") in active_states),None) or next((x for x in f if x.get("status") in active_states),None) or next((x for x in p if x.get("status")=="completed"),None) or next((x for x in f if x.get("status")=="completed"),None); print((str(r["databaseId"])+"\t"+r["status"]+"\t"+str(r.get("conclusion") or "")) if r else "")')"
 
 if [[ -z "$match" ]]; then
   gh workflow run "$workflow" --repo "$build_repo" --ref main -f source_ref="$sha" -f channel="$channel"
@@ -38,6 +40,11 @@ if [[ -z "$match" ]]; then
 fi
 IFS=$'\t' read -r run_id run_status run_conclusion <<< "$match"
 if [[ "$run_status" != "completed" || "$run_conclusion" != "success" ]]; then
+  if [[ "$run_status" == "completed" ]]; then
+    gh workflow run "$fallback_workflow" --repo "$build_repo" --ref main -f source_ref="$sha"
+    echo "Primary/fallback builds for $channel $sha are not successful; dispatched fallback build"
+    exit 0
+  fi
   echo "Private build $run_id for $channel $sha is $run_status"
   exit 0
 fi
