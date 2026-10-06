@@ -20,7 +20,7 @@ export default function SiteChrome({ children, headerVariant = "site", showLogou
           <span className={styles.applicationBannerText}>
             Applications for 2026 are now open!
           </span>
-          <span className={styles.applicationBannerAction}>Click to apply</span>
+          <span className={styles.applicationBannerAction}>Apply here</span>
         </Link>
       ) : null}
       <Navbar variant={headerVariant} showLogout={showLogout} />

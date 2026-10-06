@@ -40,13 +40,14 @@ export default function Home() {
                         </p>
                         <p className="text-gray-300 max-w-xl mb-8">
                             2026-2027 is the second year for SUAS@STEM. We are currently engineering
-                            and building our fifth aircraft, Event Horizon-5, and are excited to
+                            and building our fifth aircraft, and are excited to
                             represent Tesla STEM High School at Skyway Range in Tulsa, Oklahoma in
                             2027.
                         </p>
 
                         <Link href={APPLICATION_PAGE_URL} className="join-modal-apply">
-                            Build Event Horizon-5 With Us <span aria-hidden>→</span>
+                            <span>Build With Us</span>
+                            <Image src="/images/icons/forward.svg" width={16} height={16} alt="" aria-hidden="true" />
                         </Link>
                     </div>
 

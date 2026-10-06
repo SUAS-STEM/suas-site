@@ -28,7 +28,7 @@ export default function ApplyPage() {
       <section className={`flex flex-1 justify-center ${styles.heroSection}`}>
         <div className={homeStyles.heroGrid}>
           <div className={styles.heroCopy}>
-            <h1 className={styles.title}>Join us</h1>
+            <h1 className={styles.title}>Build With Us</h1>
             <p className={styles.intro}>
               Join SUAS@STEM to design, build, program, test, and fly an autonomous aircraft for
               the national Student Unmanned Aerial Systems competition. Work across airframe,
