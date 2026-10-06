@@ -25,6 +25,9 @@ services:
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
       SPONSOR_DB_PATH: /data/sponsors.db
+      DEPLOY_TRIGGER_PATH: /run/suas-deploy-trigger/webhook.json
+    env_file:
+      - /home/pi/suas-site-deploy/webhook.env
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
@@ -49,6 +52,7 @@ services:
       - suas_next_cache:/var/cache
       - suas_sponsors_data:/data
       - /home/pi/suas-status:/run/suas-status:ro
+      - /home/pi/suas-site-deploy/triggers:/run/suas-deploy-trigger
 
 volumes:
   suas_next_cache:

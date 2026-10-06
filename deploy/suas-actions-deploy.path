@@ -1,0 +1,9 @@
+[Unit]
+Description=Trigger SUAS production deployment from GitHub webhook
+
+[Path]
+PathChanged=/home/pi/suas-site-deploy/triggers/webhook.json
+Unit=suas-actions-deploy.service
+
+[Install]
+WantedBy=paths.target
