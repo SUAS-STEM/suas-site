@@ -6,6 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=/home/pi/suas-site
+Environment=WARM_CACHE_JOBS=6
 ExecStart=/home/pi/suas-site/deploy/deploy-actions-artifact.sh
 Nice=10
 IOSchedulingClass=idle
