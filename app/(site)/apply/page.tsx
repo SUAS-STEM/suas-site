@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { applicationSubsystemGroups, sectionCards } from "../team/data";
 import homeStyles from "../home.module.css";
 import styles from "./apply.module.css";
@@ -35,7 +36,12 @@ export default function ApplyPage() {
               avionics, embedded systems, autonomous flight, software, computer vision, and flight
               testing.
             </p>
-            <ApplicationCTA href={applicationFormUrl} />
+            <div className={styles.actionGroup}>
+              <ApplicationCTA href={applicationFormUrl} />
+              <Link href="/team" className={`${styles.primaryAction} ${styles.secondaryAction}`}>
+                Meet the Team
+              </Link>
+            </div>
             <p className={styles.reassurance}>
               First-time applications take about 45 minutes. Sharing additional experiences or
               preparing optional supplemental materials may take longer. Current members renewing

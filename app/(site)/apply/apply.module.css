@@ -57,10 +57,32 @@
   flex: 0 0 auto;
 }
 
+.actionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.secondaryAction {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, rgba(63, 67, 73, 0.96), rgba(29, 32, 37, 0.98));
+  box-shadow: 0 0.45rem 1.3rem rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: #f3f4f6;
+}
+
 .primaryAction:hover,
 .primaryAction:focus-visible {
   transform: translateY(-2px);
   box-shadow: 0 0.7rem 1.6rem rgba(24, 154, 159, 0.42);
+}
+
+.secondaryAction:hover,
+.secondaryAction:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.24);
+  background: linear-gradient(135deg, rgba(77, 82, 89, 0.98), rgba(38, 41, 47, 0.99));
+  box-shadow: 0 0.65rem 1.5rem rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .primaryAction:focus-visible {
@@ -220,8 +242,8 @@
 
 @media (max-width: 767px) {
   .heroSection {
-    min-height: 57.4375rem;
-    align-items: flex-end;
+    min-height: 0;
+    align-items: flex-start;
   }
 
   .title {
