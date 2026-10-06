@@ -1,9 +1,11 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import galleryStyles from "./gallery.module.css";
 import titleStyles from "../page-title.module.css";
 import {
     DURABLE_GALLERY_BASE,
+    GALLERY_CAPTIONS,
     GALLERY_DISPLAY,
     GALLERY_PHOTOS,
     GALLERY_THUMBNAILS,
@@ -34,6 +36,7 @@ export default function GalleryPage() {
     const galleryPhotos = GALLERY_PHOTOS as readonly string[];
     const galleryDisplay = GALLERY_DISPLAY as readonly string[];
     const galleryThumbnails = GALLERY_THUMBNAILS as readonly string[];
+    const galleryCaptions = GALLERY_CAPTIONS as readonly { caption: string; people: readonly string[] }[];
     const [isFullscreenMode, setIsFullscreenMode] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [switchClass, setSwitchClass] = useState("");
@@ -179,7 +182,12 @@ export default function GalleryPage() {
                                             galleryPhotos[currentIndex] ||
                                             "/logo.png"
                                         }
-                                        alt={`gallery-${currentIndex + 1}`}
+                                        alt={
+                                            galleryCaptions[currentIndex]?.caption ||
+                                            (galleryCaptions[currentIndex]?.people.length
+                                                ? `Photo including ${galleryCaptions[currentIndex].people.join(", ")}`
+                                                : `Gallery photo ${currentIndex + 1}`)
+                                        }
                                         className="block h-auto w-auto max-w-full rounded-xl border border-white"
                                         style={{ borderRadius: "0.75rem" }}
                                         onError={(e) => {
@@ -194,6 +202,18 @@ export default function GalleryPage() {
                                     />
                                 </div>
                             </div>
+                            {(galleryCaptions[currentIndex]?.caption || galleryCaptions[currentIndex]?.people.length > 0) && (
+                                <div className={galleryStyles.fullscreenCaption}>
+                                    {galleryCaptions[currentIndex]?.caption && (
+                                        <p>{galleryCaptions[currentIndex].caption}</p>
+                                    )}
+                                    {galleryCaptions[currentIndex]?.people.length > 0 && (
+                                        <p className={galleryStyles.people}>
+                                            In this photo: {galleryCaptions[currentIndex].people.join(", ")}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="grid grid-cols-3 max-md:grid-cols-2 gap-2 sm:gap-3 md:gap-6">
@@ -202,12 +222,17 @@ export default function GalleryPage() {
                                     key={idx}
                                     type="button"
                                     onClick={() => openFullscreenAt(idx)}
-                                    className="bg-white border-1 cursor-pointer border-white rounded overflow-hidden shadow-sm text-left"
+                                    className={galleryStyles.photoCard}
                                     style={{ contentVisibility: "auto", containIntrinsicSize: "400px 300px" }}
                                 >
                                     <img
                                         src={galleryThumbnails[idx] || src}
-                                        alt={`gallery-${idx + 1}`}
+                                        alt={
+                                            galleryCaptions[idx]?.caption ||
+                                            (galleryCaptions[idx]?.people.length
+                                                ? `Photo including ${galleryCaptions[idx].people.join(", ")}`
+                                                : `Gallery photo ${idx + 1}`)
+                                        }
                                         className="w-full h-auto aspect-[4/3] object-cover rounded-lg"
                                         onError={(e) => {
                                             applyDurableFallback(e, src);
@@ -218,6 +243,20 @@ export default function GalleryPage() {
                                         fetchPriority={idx < 6 ? "high" : "low"}
                                         decoding="async"
                                     />
+                                    {(galleryCaptions[idx]?.caption || galleryCaptions[idx]?.people.length > 0) && (
+                                        <span className={galleryStyles.photoDetails}>
+                                            {galleryCaptions[idx]?.caption && (
+                                                <span className={galleryStyles.photoCaption}>
+                                                    {galleryCaptions[idx].caption}
+                                                </span>
+                                            )}
+                                            {galleryCaptions[idx]?.people.length > 0 && (
+                                                <span className={galleryStyles.people}>
+                                                    {galleryCaptions[idx].people.join(", ")}
+                                                </span>
+                                            )}
+                                        </span>
+                                    )}
                                 </button>
                             ))}
                         </div>

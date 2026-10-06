@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
-import { INTEREST_FORM_URL } from "./team/data";
+import Link from "next/link";
+import { APPLICATION_PAGE_URL } from "./team/data";
 import styles from "./home.module.css";
 
 export default function Home() {
@@ -44,14 +45,9 @@ export default function Home() {
                             2027.
                         </p>
 
-                        <a
-                            href={INTEREST_FORM_URL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="join-modal-apply"
-                        >
+                        <Link href={APPLICATION_PAGE_URL} className="join-modal-apply">
                             Build Event Horizon-5 With Us <span aria-hidden>→</span>
-                        </a>
+                        </Link>
                     </div>
 
                     {/* Right: image */}

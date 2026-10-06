@@ -1,6 +1,7 @@
 import Image from "next/image";
+import Link from "next/link";
 import { ReactElement } from "react";
-import { DEFAULT_LINK_TEXT, INTEREST_FORM_URL } from "./data";
+import { APPLICATION_PAGE_URL, DEFAULT_LINK_TEXT } from "./data";
 import { CardInfo, getSubsystemIcon } from "./types";
 
 export function JoinModal({
@@ -67,15 +68,10 @@ export function JoinModal({
                 {!card.note || card.url ? (
                     <>
                         <div style={{ height: "16px" }} />
-                        <a
-                            href={card.url ?? INTEREST_FORM_URL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="join-modal-apply"
-                        >
+                        <Link href={APPLICATION_PAGE_URL} className="join-modal-apply">
                             <span>{card.linkText ?? DEFAULT_LINK_TEXT}</span>
                             <Image src="/images/icons/forward.svg" width={16} height={16} alt="" aria-hidden="true" />
-                        </a>
+                        </Link>
                     </>
                 ) : null}
             </div>

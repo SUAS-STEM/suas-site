@@ -102,3 +102,133 @@ export const GALLERY_THUMBNAILS = [
     "/images/gallery/thumbs/WhatsApp%20Image%202026-05-18%20at%2018.15.39%20(6).6ce44dce9faf.webp",
     "/images/gallery/thumbs/WhatsApp%20Image%202026-05-18%20at%2018.15.39.e3c384b37b39.webp"
 ] as const;
+export const GALLERY_CAPTIONS = [
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    },
+    {
+        "caption": "",
+        "people": []
+    }
+] as const;

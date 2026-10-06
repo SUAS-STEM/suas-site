@@ -49,4 +49,5 @@ next-env.d.ts
 
 # docker secrets / local data
 /.secrets
-/data
+/data/*
+!/data/gallery-captions.json

@@ -1,0 +1,230 @@
+.heroCopy {
+  text-align: left;
+  font-family: var(--font-exo2);
+}
+
+.heroSection {
+  min-height: 28rem;
+  align-items: center;
+}
+
+.title {
+  max-width: 12ch;
+  margin: 0;
+  font-size: clamp(2.7rem, 5vw, 4.35rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.intro {
+  max-width: 42rem;
+  margin: 1.35rem 0 1rem;
+  color: #d1d5db;
+  font-size: 1.08rem;
+  line-height: 1.65;
+}
+
+.primaryAction {
+  display: inline-flex;
+  box-sizing: border-box;
+  height: 3rem;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #70e4e6, #189a9f);
+  box-shadow: 0 0.45rem 1.3rem rgba(24, 154, 159, 0.28);
+  color: #041b1c;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.actionArrow {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-left: 0.25rem;
+  filter: brightness(0);
+  flex: 0 0 auto;
+}
+
+.primaryAction:hover,
+.primaryAction:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 0.7rem 1.6rem rgba(24, 154, 159, 0.42);
+}
+
+.primaryAction:focus-visible {
+  outline: 2px solid #b9fcff;
+  outline-offset: 3px;
+}
+
+.reassurance {
+  max-width: 42rem;
+  margin: 1rem 0 0;
+  color: rgba(235, 243, 245, 0.68);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.subsystems {
+  width: min(100%, 80rem);
+  margin: 1rem auto 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-family: var(--font-exo2);
+}
+
+.subsystems h2 {
+  margin: 0 0 1.5rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+}
+
+.subsystemGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subsystemCard {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  padding: 1.35rem 1.45rem;
+  border: var(--border);
+  border-radius: 16px;
+  background: var(--gradient);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.subsystemCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(79, 209, 213, 0.6);
+  box-shadow: 0 26px 64px rgba(0, 0, 0, 0.34);
+}
+
+.subsystemCard:focus-visible {
+  outline: 2px solid #b9fcff;
+  outline-offset: 3px;
+}
+
+.subsystemCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.subsystemTitle {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  color: #f6ffff;
+  font-size: clamp(1.15rem, 2vw, 1.4rem);
+  font-weight: 750;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.subsystemIcons {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.subsystemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.subsystemIcon img {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+}
+
+.subsystemSummaries {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.55rem;
+}
+
+.subsystemSummary {
+  display: block;
+  margin: 0;
+  color: rgba(235, 243, 245, 0.72);
+  font-size: 0.97rem;
+  line-height: 1.55;
+}
+
+.subsystemArea {
+  color: #70dfe2;
+  font-weight: 600;
+}
+
+.subsystemCardAction {
+  align-self: flex-start;
+  width: fit-content;
+  margin-top: 1rem;
+}
+
+@media (max-width: 520px) {
+  .subsystemGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .subsystemCard {
+    padding: 1.1rem;
+  }
+}
+
+.applicationForm {
+  width: min(100%, 80rem);
+  margin: 2.5rem auto 0;
+  overflow: hidden;
+  border: 1px solid rgba(112, 223, 226, 0.25);
+  border-radius: 0.9rem;
+}
+
+.applicationForm iframe {
+  display: block;
+  width: 100%;
+  min-height: 44rem;
+  border: 0;
+}
+
+@media (max-width: 767px) {
+  .heroSection {
+    min-height: 57.4375rem;
+    align-items: flex-end;
+  }
+
+  .title {
+    font-size: clamp(2.6rem, 10vw, 4rem);
+  }
+}

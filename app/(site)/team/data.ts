@@ -1,6 +1,6 @@
 import { CardInfo, Member, Rank } from "./types";
 
-export const INTEREST_FORM_URL = "https://forms.cloud.microsoft/r/9mH58395cf";
+export const APPLICATION_PAGE_URL = "/apply";
 export const DEFAULT_LINK_TEXT = "Build Event Horizon-5 With Us";
 
 export const sectionCards: Record<string, CardInfo[]> = {
@@ -28,7 +28,6 @@ export const sectionCards: Record<string, CardInfo[]> = {
             description:
                 "The Avionics Lead will oversee the design, integration, and testing of the aircraft's electrical systems as well as coordinating the Avionics subsystem and working closely with the Technical Manager and other subsystem leads.",
             note: "This is not a direct entry position. We plan to select the next Avionics Lead from within the team after new member recruitment and training, based on demonstrated technical ability, reliability, communication, and leadership. New members interested in eventually taking on this role are encouraged to join the Avionics subsystem and develop their skills with the team.",
-            url: INTEREST_FORM_URL,
         },
         {
             subsystem: "Avionics",
@@ -75,6 +74,25 @@ export const sectionCards: Record<string, CardInfo[]> = {
 };
 
 export const cardEnabledSubsystems = ["Flight", "Avionics", "Autopilot", "Imaging", "Doc"];
+
+export const applicationSubsystemGroups = [
+    {
+        title: "Flight",
+        sections: ["Flight"],
+    },
+    {
+        title: "Software (Autopilot/Imaging)",
+        sections: ["Autopilot", "Imaging"],
+    },
+    {
+        title: "Avionics",
+        sections: ["Avionics"],
+    },
+    {
+        title: "Doc",
+        sections: ["Doc"],
+    },
+] as const;
 
 export const sections: { title: string; description: string; members: Member[] }[] = [
     {

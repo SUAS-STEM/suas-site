@@ -1,0 +1,56 @@
+.photoCard {
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.035);
+  color: #f4f7fa;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.photoCard:hover,
+.photoCard:focus-visible {
+  border-color: rgba(64, 226, 211, 0.72);
+  background: rgba(45, 190, 183, 0.08);
+  transform: translateY(-2px);
+}
+
+.photoCard:focus-visible {
+  outline: 2px solid #40e2d3;
+  outline-offset: 3px;
+}
+
+.photoDetails {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.75rem 0.85rem 0.85rem;
+}
+
+.photoCaption {
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.people {
+  color: #47d9cb;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.fullscreenCaption {
+  width: min(100%, 64rem);
+  margin-top: -0.75rem;
+  padding: 0 0.5rem;
+  color: #e3e8ec;
+  text-align: left;
+}
+
+.fullscreenCaption p {
+  margin: 0.3rem 0;
+}

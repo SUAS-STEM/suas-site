@@ -894,9 +894,17 @@ p a {
   text-align: center;
 }
 
+.apply-modal {
+  box-sizing: border-box;
+}
+
 .member-photo {
   display: flex;
   justify-content: center;
+}
+
+.join-modal-photos {
+  gap: 0.75rem;
 }
 
 .member h4 {
