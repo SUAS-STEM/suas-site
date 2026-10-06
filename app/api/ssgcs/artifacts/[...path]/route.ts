@@ -9,7 +9,12 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ROOT = resolve(process.env.SSGCS_ARTIFACT_ROOT || "/data/ssgcs-artifacts");
+// This storage root is intentionally runtime-configurable and lives outside the
+// application bundle. Tell Turbopack not to trace the dynamic filesystem path
+// back into the project during standalone output-file tracing.
+const ROOT = resolve(
+    /* turbopackIgnore: true */ process.env.SSGCS_ARTIFACT_ROOT || "/data/ssgcs-artifacts",
+);
 // Keep this aligned with next.config.ts proxyClientMaxBodySize. Release
 // binaries live on GitHub Releases; this endpoint is for installer/support
 // assets that should remain small enough to pass through the site proxy.
@@ -41,7 +46,14 @@ async function artifactPath(
     const version = safeSegment(rawVersion, "version");
     const file = safeSegment(rawFile, "file");
     if (!CHANNELS.has(channel) || !version || !file || basename(file) !== file) return null;
-    const absolute = resolve(join(ROOT, channel, version, file));
+    const absolute = resolve(
+        /* turbopackIgnore: true */ join(
+            /* turbopackIgnore: true */ ROOT,
+            channel,
+            version,
+            file,
+        ),
+    );
     if (!absolute.startsWith(`${ROOT}/`)) return null;
     return { channel, version, file, absolute };
 }
@@ -80,7 +92,7 @@ async function lookup(context: RouteContext) {
     const artifact = await artifactPath(context);
     if (!artifact) return null;
     try {
-        const info = await stat(artifact.absolute);
+        const info = await stat(/* turbopackIgnore: true */ artifact.absolute);
         return info.isFile() ? { ...artifact, size: info.size } : null;
     } catch {
         return null;
@@ -115,7 +127,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     if (declared > MAX_BYTES)
         return NextResponse.json({ error: "Artifact too large" }, { status: 413 });
 
-    await mkdir(join(ROOT, artifact.channel, artifact.version), { recursive: true });
+    await mkdir(
+        /* turbopackIgnore: true */ join(
+            /* turbopackIgnore: true */ ROOT,
+            artifact.channel,
+            artifact.version,
+        ),
+        { recursive: true },
+    );
     const temporary = `${artifact.absolute}.${process.pid}.${Date.now()}.upload`;
     const hash = createHash("sha256");
     let bytes = 0;
