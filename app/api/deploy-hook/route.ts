@@ -55,12 +55,12 @@ async function triggerDeploy(payload: JsonObject) {
   await mkdir(directory, { recursive: true });
   await appendFile(path.join(directory, "events.jsonl"), `${JSON.stringify(payload)}\n`, {
     encoding: "utf8",
-    mode: 0o600,
+    mode: 0o644,
   });
   const temporaryPath = `${triggerPath}.${process.pid}.${Date.now()}.tmp`;
   await writeFile(temporaryPath, `${JSON.stringify(payload)}\n`, {
     encoding: "utf8",
-    mode: 0o600,
+    mode: 0o644,
   });
   await rename(temporaryPath, triggerPath);
 }
