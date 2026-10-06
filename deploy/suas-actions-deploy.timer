@@ -2,9 +2,9 @@
 Description=Check for GitHub-built SUAS production deployments
 
 [Timer]
-OnBootSec=2min
-OnUnitActiveSec=2min
-RandomizedDelaySec=20
+OnBootSec=30s
+OnUnitActiveSec=30s
+RandomizedDelaySec=5s
 Persistent=true
 
 [Install]
