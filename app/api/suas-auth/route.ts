@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clearSessionCookies, loginUser, registerUser, SESSION_MAX_AGE, sessionCookies, userFromSessionToken } from "@/lib/authCore";
+import { clearSessionCookies, loginUser, registerUser, SESSION_MAX_AGE, sessionCookies, userFromSessionToken, verifyAccessCookie } from "@/lib/authCore";
 import { clientAddress, consumeRateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -19,7 +19,9 @@ function resultError(message: string, status = 400, retryAfter?: number | null) 
 
 export async function GET(req: NextRequest) {
   const user = userFromSessionToken(req.cookies.get("suas_session")?.value);
-  return NextResponse.json({ user }, { headers: { "Cache-Control": "private, no-store" } });
+  const access = verifyAccessCookie(req.cookies.get("suas_auth")?.value);
+  const coherentUser = user && access?.uid === user.id ? user : null;
+  return NextResponse.json({ user: coherentUser }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(req: NextRequest) {
