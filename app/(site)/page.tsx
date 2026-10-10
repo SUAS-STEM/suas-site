@@ -34,7 +34,7 @@ export default function Home() {
                             <a href="https://suas-competition.org/" target="blank">
                                 Student Unmanned Aerial Systems
                             </a>{" "}
-                            (SUAS) competition. Our team designs and builds autonomous drones
+                            (SUAS) competition. Our team designs and builds autonomous aircraft
                             capable of performing complex real-world missions including navigation,
                             computer vision, and payload delivery.
                         </p>
