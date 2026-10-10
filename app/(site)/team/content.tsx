@@ -9,7 +9,7 @@ import stylesModule from "./team.module.css";
 import titleStyles from "../page-title.module.css";
 import { cardEnabledSubsystems, pastMembers, sectionCards, sections } from "./data";
 import { styles } from "./styles";
-import { CardInfo, Member, Rank, getRole, getSubsystemIcon } from "./types";
+import { CardInfo, Member, Rank, getRole, getSubsystemIcon, isSubsystemLead } from "./types";
 
 function InfoCard({ card, onOpen }: { card: CardInfo; onOpen: () => void }): ReactElement {
     return (
@@ -55,7 +55,7 @@ export default function TeamContent(): ReactElement {
         () =>
             sections.flatMap((section) =>
                 [...section.members]
-                    .sort((a, b) => (a.rank === Rank.Lead ? -1 : b.rank === Rank.Lead ? 1 : 0))
+                    .sort((a, b) => Number(isSubsystemLead(b.rank)) - Number(isSubsystemLead(a.rank)))
                     .map((member) => ({ ...member, subsystem: section.title })),
             ),
         [],
@@ -150,14 +150,38 @@ export default function TeamContent(): ReactElement {
         };
     }, [isOpen, joinInfo]);
 
+    const renderMemberCard = (member: Member, subsystem: string): ReactElement => (
+        <button
+            key={member.name}
+            type="button"
+            style={styles.card}
+            className="member-card"
+            onClick={() => {
+                setSelectedMember({ ...member, subsystem });
+                setIsClosing(false);
+                setSwitchClass("");
+                setIsOpen(true);
+            }}
+        >
+            <div style={styles.photoWrap} className="member-photo-wrap">
+                <MemberPhoto name={member.name} className="min-w-64" />
+            </div>
+            <div style={styles.name}>{member.displayName ?? member.name}</div>
+            {member.rank === Rank.Member && subsystem === "Software" ? null : (
+                <div style={styles.role}>
+                    {member.rank !== Rank.Member
+                        ? getRole(member.rank, subsystem, member.softwareRole)
+                        : " "}
+                </div>
+            )}
+        </button>
+    );
+
     return (
         <>
             <main style={styles.page} className="font-sans">
                 <section style={styles.hero}>
                     <div style={{ maxWidth: 900, margin: "0 auto" }}>
-                        <div className="eyebrow eyebrow--center" style={{ marginBottom: 14 }}>
-                            SUAS @Tesla STEM High School
-                        </div>
                         <h1 className={titleStyles.pageTitle} style={styles.heroTitle}>The Flight Crew</h1>
                         <p style={styles.heroSubtitle}>
                             We are a team of eighteen students from Tesla STEM High School, ranked
@@ -168,8 +192,8 @@ export default function TeamContent(): ReactElement {
                             >
                                 US News
                             </a>
-                            . We collaborate in six engineering subsystems spanning aerospace,
-                            electrical, and software disciplines to develop an aircraft to compete
+                            . We collaborate across four subsystems spanning aerospace,
+                            electrical, software, and documentation disciplines to develop an aircraft to compete
                             in the SUAS competition.
                         </p>
                         <p className={stylesModule.updateNote}>
@@ -194,6 +218,21 @@ export default function TeamContent(): ReactElement {
                             <p style={styles.sectionDescription}>{sec.description}</p>
                         )}
 
+                        {sec.title === "Software" ? (
+                            <>
+                                <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
+                                    <span className="section-tag">Leadership</span>
+                                </div>
+                                <div className={stylesModule.softwareLeadRow}>
+                                    {sec.members
+                                        .filter((member) => isSubsystemLead(member.rank))
+                                        .map((member) => renderMemberCard(member, sec.title))}
+                                </div>
+                            </>
+                        ) : null}
+                        {sec.title === "Software" ? (
+                            <hr className={stylesModule.softwareDivider} aria-hidden="true" />
+                        ) : null}
                         <div style={styles.grid}>
                             {cardEnabledSubsystems.includes(sec.title)
                                 ? (sectionCards[sec.title] ?? [])
@@ -206,28 +245,10 @@ export default function TeamContent(): ReactElement {
                                           />
                                       ))
                                 : null}
-                            {[...sec.members].sort((a, b) => (a.rank === Rank.Lead ? -1 : b.rank === Rank.Lead ? 1 : 0)).map((m) => (
-                                <button
-                                    key={m.name}
-                                    type="button"
-                                    style={styles.card}
-                                    className="member-card"
-                                    onClick={() => {
-                                        setSelectedMember({ ...m, subsystem: sec.title });
-                                        setIsClosing(false);
-                                        setSwitchClass("");
-                                        setIsOpen(true);
-                                    }}
-                                >
-                                    <div style={styles.photoWrap} className="member-photo-wrap">
-                                        <MemberPhoto name={m.name} className="min-w-64" />
-                                    </div>
-                                    <div style={styles.name}>{m.name}</div>
-                                    <div style={styles.role}>
-                                        {m.rank !== Rank.Member ? getRole(m.rank, sec.title) : " "}
-                                    </div>
-                                </button>
-                            ))}
+                            {[...sec.members]
+                                .filter((member) => sec.title !== "Software" || !isSubsystemLead(member.rank))
+                                .sort((a, b) => Number(isSubsystemLead(b.rank)) - Number(isSubsystemLead(a.rank)))
+                                .map((member) => renderMemberCard(member, sec.title))}
                             {cardEnabledSubsystems.includes(sec.title)
                                 ? (sectionCards[sec.title] ?? [])
                                       .filter((card) => card.placement !== "start")

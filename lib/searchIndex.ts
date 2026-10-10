@@ -26,8 +26,9 @@ export const searchIndex: SearchEntry[] = [
     title: "Team",
     url: "/team",
     content:
-      "Team roster members leads operations lead project manager flight avionics autopilot " +
-      "imaging doc board subsystems. Wenxin Fang, Yu Tane Quah, Karthik Rajagopal, Pratham Koka, " +
+      "Team roster members leads operations lead project manager flight avionics software " +
+      "autopilot imaging roles software co-leads Ethan Chan and Jeswanth Battula (Jeswanth Sri Sai Battula) " +
+      "documentation doc board subsystems. Wenxin Fang, Yu Tane Quah, Karthik Rajagopal, Pratham Koka, " +
       "Nithin Ganesh, Ivana Mohapatra, Akanksha Revuru, Max Xie, Advay Midha, Jeswanth Sri Sai " +
       "Battula, Ethan Chan, Neel Nevrekar, Zhencheng Lu, Timothy An, Ved Agrawal, Avnish Dighe, " +
       "Zifeng (Jeff) Gao, Inesh Dey.",

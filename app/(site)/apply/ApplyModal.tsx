@@ -8,18 +8,12 @@ import type { CardInfo } from "../team/types";
 export function ApplyModal({
   cards,
   title,
-  mergedContent,
   isClosing,
   onClose,
   applicationFormUrl,
 }: {
   cards: CardInfo[];
   title: string;
-  mergedContent?: {
-    description: string;
-    goodFit: string[];
-    skills: string[];
-  };
   isClosing: boolean;
   onClose: () => void;
   applicationFormUrl: string;
@@ -48,17 +42,7 @@ export function ApplyModal({
         <h3 className="member-title">{title.toUpperCase()}</h3>
         <hr />
         <div style={{ height: "10px" }} />
-        {mergedContent ? (
-          <div>
-            <p>{mergedContent.description}</p>
-            <div style={{ height: "10px" }} />
-            <h4>Good fit if you:</h4>
-            <ul>{mergedContent.goodFit.map((item) => <li key={item}>{item}</li>)}</ul>
-            <div style={{ height: "10px" }} />
-            <h4>Recommended prior skills in:</h4>
-            <ul>{mergedContent.skills.map((item) => <li key={item}>{item}</li>)}</ul>
-          </div>
-        ) : cards.map((card) => (
+        {cards.map((card) => (
           <div key={card.subsystem}>
             {cards.length > 1 ? <h4>{card.subsystem}</h4> : null}
             <p>{card.description}</p>

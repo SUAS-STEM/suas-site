@@ -41,24 +41,22 @@ export const sectionCards: Record<string, CardInfo[]> = {
             skills: ["Soldering or breadboarding", "Electronics and circuits", "Robotics or RC"],
         },
     ],
-    Autopilot: [
+    Software: [
         {
-            subsystem: "Autopilot",
-            title: "Join Autopilot",
+            subsystem: "Software",
+            title: "Join Software",
             description:
-                "Autopilot develops the systems that will allow the aircraft to fly autonomously. Members work with ArduPilot, flight controllers, GNSS/RTK, telemetry, and ground control software to support autonomous takeoff, landing, and waypoint navigation. The subsystem also develops software for vehicle control, monitoring, and communication between the aircraft and ground control station.",
-            goodFit: ["Enjoy programming, software development, or autonomous systems", "Are interested in CS and computer engineering"],
-            skills: ["Python or C/C++", "Computer engineering", "Software development"],
-        },
-    ],
-    Imaging: [
-        {
-            subsystem: "Imaging",
-            title: "Join Imaging",
-            description:
-                "Imaging develops the computer-vision systems of the aircraft. Members create software for aerial mapping, image processing, target detection, geo-tagging, classification, and localization. The team works with cameras, ground-side computers such as the NVIDIA Jetson, and integrates imaging data into the autonomous mission. Imaging also helps create the live video stream from the aircraft to a presentable, front-end ground control station.",
-            goodFit: ["Enjoy programming and computer vision", "Are interested in AI or machine learning"],
-            skills: ["Python", "Computer hardware and engineering", "Machine learning"],
+                "Software develops autonomous flight, ground control, and computer vision systems for the aircraft. Members develop ground control software, image stitching and math algorithms, and work with other hardware on the aircraft, including programs aboard the flight controller. Members are also responsible for operating the aircraft's ground control station, as well as managing the website and cloud infrastructure for the team.",
+            goodFit: [
+                "Enjoy programming, electronics, or integrating hardware and software",
+                "Are interested in computer science, computer engineering, robotics, embedded systems, or computer vision",
+            ],
+            skills: [
+                "Python or C/C++",
+                "Computer engineering",
+                "Electronics and embedded systems",
+                "Computer vision or machine learning",
+            ],
         },
     ],
     Doc: [
@@ -73,7 +71,7 @@ export const sectionCards: Record<string, CardInfo[]> = {
     ],
 };
 
-export const cardEnabledSubsystems = ["Flight", "Avionics", "Autopilot", "Imaging", "Doc"];
+export const cardEnabledSubsystems = ["Flight", "Avionics", "Software", "Doc"];
 
 export const applicationSubsystemGroups = [
     {
@@ -81,8 +79,8 @@ export const applicationSubsystemGroups = [
         sections: ["Flight"],
     },
     {
-        title: "Software (Autopilot/Imaging)",
-        sections: ["Autopilot", "Imaging"],
+        title: "Software",
+        sections: ["Software"],
     },
     {
         title: "Avionics",
@@ -164,31 +162,27 @@ export const sections: { title: string; description: string; members: Member[] }
         ],
     },
     {
-        title: "Autopilot",
-        description: "The Autopilot subsystem develops software for autonomous flight.",
+        title: "Software",
+        description: "The Software subsystem develops autonomous flight and ground control software, integrates onboard computers and sensors, and builds computer vision for mapping and target detection.",
         members: [
             {
                 name: "Ethan Chan",
                 grade: 10,
-                rank: Rank.Lead,
-                about: `Hi, I'm Ethan. I serve as an autopilot team member for SUAS@STEM and am passionate about STEM, especially software and engineering. I have experience with C++ and Python, optimizing performance across hardware multicore, GPU, and SIMD architectures. Since the age of nine, I've developed a variety of apps, technical utilities, and games. Besides software, I apply my skills in SolidWorks, Autodesk Fusion, Blender, and Autodesk Maya in other projects. Outside of STEM, I play piano and violin, swim, and enjoy exploring nature. My goal is to integrate all my engineering skills into projects that push the limits of  technology and design.`,
+                rank: Rank.CoLead,
+                about: `Hi, I'm Ethan. I serve as a Software Co-Lead for SUAS@STEM and am passionate about STEM, especially software and engineering. I have experience with C++ and Python, optimizing performance across hardware multicore, GPU, and SIMD architectures. Since the age of nine, I've developed a variety of apps, technical utilities, and games. Besides software, I apply my skills in SolidWorks, Autodesk Fusion, Blender, and Autodesk Maya in other projects. Outside of STEM, I play piano and violin, swim, and enjoy exploring nature. My goal is to integrate all my engineering skills into projects that push the limits of  technology and design.`,
             },
-        ],
-    },
-    {
-        title: "Imaging",
-        description: "The Imaging subsystem develops the drone's computer vision capabilities.",
-        members: [
             {
                 name: "Jeswanth Sri Sai Battula",
+                displayName: "Jeswanth Battula",
                 grade: 10,
-                rank: Rank.Lead,
-                about: `Hi, I'm Jeswanth, and I serve as a pilot and imaging project lead for SUAS@STEM, our competitive small unmanned aircraft systems team. I'm passionate about aerospace engineering and autonomous flight, and I enjoy working at the intersection of hands-on flying and advanced flight systems. As a pilot, I'm responsible for safely operating our aircraft during testing and competition, maintaining precision and control under pressure. On the imaging team, I help lead our computer vision efforts, from dataset collection to model training, to ensure consistent performance during autonomous missions. Outside of SUAS, I'm also involved in competitive VEX Robotics, where I design, build, and program robots for high-level competitions. Robotics has strengthened my analytical thinking and collaborative skills, which carry over into aerospace projects. When I'm relaxing, you can usually find me playing pickup basketball, listening to music, trying new foods with friends, or going on long walks to clear my mind and reset.`,
+                rank: Rank.CoLead,
+                about: `Hi, I'm Jeswanth, and I serve as a pilot and Software Co-Lead for SUAS@STEM, our competitive small unmanned aircraft systems team. I'm passionate about aerospace engineering and autonomous flight, and I enjoy working at the intersection of hands-on flying and advanced flight systems. As a pilot, I'm responsible for safely operating our aircraft during testing and competition, maintaining precision and control under pressure. I also help lead our computer vision efforts, from dataset collection to model training, to ensure consistent performance during autonomous missions. Outside of SUAS, I'm also involved in competitive VEX Robotics, where I design, build, and program robots for high-level competitions. Robotics has strengthened my analytical thinking and collaborative skills, which carry over into aerospace projects. When I'm relaxing, you can usually find me playing pickup basketball, listening to music, trying new foods with friends, or going on long walks to clear my mind and reset.`,
             },
             {
                 name: "Neel Nevrekar",
                 grade: 10,
                 rank: Rank.Member,
+                softwareRole: "Imaging",
                 about: `Hi! I'm Neel, and I enjoy working on projects that combine teamwork, problem-solving, and real-world impact. In this team, I serve as the imaging project lead. In this role, I help collect and organize datasets and work on training models that allow our system to recognize the mannequin during autonomous missions. I enjoy the collaborative nature of the work, especially brainstorming solutions with teammates and seeing ideas come together through testing and iteration.
 
 Beyond SUAS, I love mentoring younger students and being involved in activities that encourage curiosity and hands-on learning. I've spent time mentoring middle school robotics teams and enjoy helping students build confidence while exploring new challenges. I'm also interested in design and enjoy contributing creatively to projects, especially when they have a meaningful purpose.
@@ -199,7 +193,15 @@ In general, I'm someone who enjoys learning by doing and working with others to 
                 name: "Zhencheng Lu",
                 grade: 10,
                 rank: Rank.Member,
+                softwareRole: "Imaging",
                 about: `Hi, I'm Zhen. I'm a high schooler who's really into engineering and computer science, and I plan to pursue that in college. I spend a lot of my free time on robotics, tinkering with projects, coding, and figuring out how to solve problems in creative ways, spending probably more than I probably should. Outside of school, I'm passionate about producing music, experimenting with different sounds and styles to bring my thoughts to life, and I also shoot Olympic Trap, which has been a huge part of my life this past year. I competed in a state competition where I earned junior first place and in a national competition where I placed 5th in U15, and those experiences taught me a lot about focus, patience, and staying calm under pressure even when the stakes are higher than winning or losing. When I'm not working on projects or practicing, I enjoy hanging out with friends and listening to music, with Travis Scott and Don Toliver being some of my favorite artists.`,
+            },
+            {
+                name: "Ved Agrawal",
+                grade: 9,
+                rank: Rank.Member,
+                softwareRole: "Imaging",
+                about: `Hi, I'm Ved Agrawal, and I work on imaging in the Software subsystem at SUAS@STEM. I'm passionate about engineering and interested in mathematics, robotics, physics, and making my own FPV drones. When I'm not working on SUAS projects, you can find me building high-utility custom quads or preparing for the next robotics tournament.`,
             },
         ],
     },
@@ -212,12 +214,6 @@ In general, I'm someone who enjoys learning by doing and working with others to 
                 grade: 10,
                 rank: Rank.Lead,
                 about: `Hello! My name is Timothy An, and I'm currently a sophomore at Tesla STEM High School with aspirations in aerospace/mechanical engineering. Outside of SUAS, I also compete on a private team in VEX V5 Robotics and am a part of my school's TARC (The American Rocketry Challenge) team. Besides conventional engineering activities, I also participate in the Technology Student Association, where I combine my passions with creating and leadership. Artistically, I play both the bassoon and contrabassoon in various ensembles including the Seattle Youth Symphony Orchestra, WMEA's various All-State Honor Groups, and compete in numerous regional and state festivals.`,
-            },
-            {
-                name: "Ved Agrawal",
-                grade: 9,
-                rank: Rank.Member,
-                about: `Hi, I'm Ved Agrawal, and I work on Documentation for the SUAS team. My role is centered on ensuring our technical processes and progress are captured with precision, but my passion for engineering goes far beyond this. When I'm not working on SUAS work, you can find me working on mathematics, robotics, physics or making my own FPV drones. From making high-utility custom quads to carry an array of payloads to targets or grinding for the next robotics tournament.`,
             },
         ],
     },

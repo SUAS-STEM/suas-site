@@ -6,3 +6,19 @@
   line-height: 1.5;
   text-align: center;
 }
+
+.softwareLeadRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-top: 0.9rem;
+}
+
+.softwareDivider {
+  max-width: 760px;
+  height: 1px;
+  margin: 1.65rem auto 0;
+  border: 0;
+  background: rgba(255, 255, 255, 0.16);
+}

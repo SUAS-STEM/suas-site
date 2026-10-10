@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { ReactElement } from "react";
 import { MemberPhoto } from "./MemberPhoto";
-import { Member, getRole, getSubsystemIcon } from "./types";
+import { Member, Rank, getRole, getSubsystemIcon } from "./types";
 
 export function MemberModal({
     member,
@@ -36,7 +36,7 @@ export function MemberModal({
                 className={`member ${switchClass}`}
                 role="dialog"
                 aria-modal="true"
-                aria-label={member.name}
+                aria-label={member.displayName ?? member.name}
                 onClick={(e) => e.stopPropagation()}
             >
                 <button type="button" className="member-close" aria-label="Close" onClick={onClose}>
@@ -45,8 +45,10 @@ export function MemberModal({
                 <div className="member-photo">
                     <MemberPhoto name={member.name} size={300} />
                 </div>
-                <h3 className="member-title">{member.name.toUpperCase()}</h3>
-                <p className="member-role">{getRole(member.rank, member.subsystem)}</p>
+                <h3 className="member-title">{(member.displayName ?? member.name).toUpperCase()}</h3>
+                {member.rank === Rank.Member && member.subsystem === "Software" ? null : (
+                    <p className="member-role">{getRole(member.rank, member.subsystem, member.softwareRole)}</p>
+                )}
 
                 <div style={{ height: "10px" }}></div>
                 <hr />

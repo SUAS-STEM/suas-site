@@ -9,24 +9,9 @@ import styles from "./apply.module.css";
 
 const subsystemSummaries: Record<string, string> = {
   Flight: "Design and fabricate the airframe, build custom mounts, then assemble and maintain the aircraft through flight testing.",
-  "Software (Autopilot/Imaging)": "Develop software for autonomous flight, navigation, and computer vision for mapping and target detection.",
+  Software: "Program autonomous missions, connect software with onboard computers and sensors, and build ground control and computer vision systems.",
   Avionics: "Build and test aircraft power and electrical systems, including propulsion, flight controls, telemetry, and onboard computers.",
   Doc: "Record the engineering process, photograph flight testing, and create graphics and branding.",
-};
-
-const softwarePopup = {
-  description:
-    "Software develops the systems that let the aircraft fly autonomously and process aerial imagery. Members work with ArduPilot, flight controllers, GNSS/RTK, telemetry, cameras, and ground-side computers. The subsystem supports autonomous takeoff, landing, and waypoint navigation, and integrates mapping, target detection, and live video with the autonomous mission and ground control station.",
-  goodFit: [
-    "Enjoy programming, software development, autonomous systems, or computer vision",
-    "Are interested in computer science, computer engineering, AI, or machine learning",
-  ],
-  skills: [
-    "Python or C/C++",
-    "Computer engineering or computer hardware",
-    "Software development",
-    "Machine learning",
-  ],
 };
 
 type SubsystemGroup = {
@@ -101,8 +86,7 @@ export function SubsystemExplorer({
       {selectedSubsystem ? (
         <ApplyModal
           cards={selectedSubsystem.group.cards}
-          title={selectedSubsystem.group.title.startsWith("Software") ? "Join Software" : `Join ${selectedSubsystem.group.title}`}
-          mergedContent={selectedSubsystem.group.title.startsWith("Software") ? softwarePopup : undefined}
+          title={`Join ${selectedSubsystem.group.title}`}
           isClosing={isClosing}
           onClose={close}
           applicationFormUrl={applicationFormUrl}
