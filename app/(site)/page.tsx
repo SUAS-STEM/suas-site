@@ -39,10 +39,9 @@ export default function Home() {
                             computer vision, and payload delivery.
                         </p>
                         <p className="text-gray-300 max-w-xl mb-8">
-                            2026-2027 is the second year for SUAS@STEM. We are currently engineering
-                            and building our fifth aircraft, and are excited to
-                            represent Tesla STEM High School at Skyway Range in Tulsa, Oklahoma in
-                            2027.
+                            2026–2027 is SUAS@STEM&apos;s second year. We are currently designing
+                            and building our fifth aircraft and preparing to represent Tesla STEM
+                            High School at Skyway Range in Tulsa, Oklahoma, in 2027.
                         </p>
 
                         <Link href={APPLICATION_PAGE_URL} className="join-modal-apply">
