@@ -68,7 +68,13 @@ export function JoinModal({
                 {!card.note || card.url ? (
                     <>
                         <div style={{ height: "16px" }} />
-                        <Link href={APPLICATION_PAGE_URL} className="join-modal-apply">
+                        <Link
+                          href={APPLICATION_PAGE_URL}
+                          className="join-modal-apply"
+                          data-analytics-event="apply_page_click"
+                          data-analytics-label="team-join-modal"
+                          data-analytics-impression="apply_page_cta"
+                        >
                             <span>{card.linkText ?? DEFAULT_LINK_TEXT}</span>
                             <Image src="/images/icons/forward.svg" width={16} height={16} alt="" aria-hidden="true" />
                         </Link>

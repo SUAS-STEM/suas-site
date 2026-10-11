@@ -16,6 +16,9 @@ export default function SiteChrome({ children, headerVariant = "site", showLogou
         <Link
           href="/apply"
           className={styles.applicationBanner}
+          data-analytics-event="apply_page_click"
+          data-analytics-label="site-banner"
+          data-analytics-impression="apply_page_cta"
         >
           <span className={styles.applicationBannerText}>
             Applications for 2026 are now open!

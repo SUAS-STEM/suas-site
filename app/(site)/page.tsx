@@ -44,7 +44,13 @@ export default function Home() {
                             High School at Skyway Range in Tulsa, Oklahoma, in 2027.
                         </p>
 
-                        <Link href={APPLICATION_PAGE_URL} className="join-modal-apply">
+                        <Link
+                            href={APPLICATION_PAGE_URL}
+                            className="join-modal-apply"
+                            data-analytics-event="apply_page_click"
+                            data-analytics-label="home-build-with-us"
+                            data-analytics-impression="apply_page_cta"
+                        >
                             <span>Build With Us</span>
                             <Image src="/images/icons/forward.svg" width={16} height={16} alt="" aria-hidden="true" />
                         </Link>

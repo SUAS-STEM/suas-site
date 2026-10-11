@@ -66,7 +66,18 @@ export function ApplyModal({
         {applicationFormUrl.startsWith("/") ? (
           <Link href={applicationFormUrl} className="join-modal-apply">{action}</Link>
         ) : (
-          <a className="join-modal-apply" href={applicationFormUrl} target="_blank" rel="noopener noreferrer">{action}</a>
+          <a
+            className="join-modal-apply"
+            href={applicationFormUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-analytics-event="application_form_click"
+            data-analytics-label={`subsystem:${title}`}
+            data-analytics-impression="application_form_cta"
+            data-apply-click-source={`subsystem:${title}`}
+          >
+            {action}
+          </a>
         )}
       </div>
     </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Exo_2 } from "next/font/google";
 import "./globals.css";
 import Loader from "../components/Loader";
+import SiteAnalytics from "../components/SiteAnalytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,6 +50,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
   <Loader />
+        <SiteAnalytics />
         {children}
       </body>
     </html>
