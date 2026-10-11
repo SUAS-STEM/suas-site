@@ -3,13 +3,29 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Keep this in sync with the pre-hydration check in app/layout.tsx.
+const SPLASH_SESSION_KEY = "suas-splash-seen-v1";
+
 export default function Loader(): React.ReactElement | null {
   const [visible, setVisible] = useState(true);
   const [startWipe, setStartWipe] = useState(false);
   const [w, setW] = useState(0);
 
   useEffect(() => {
-    if (typeof window !== "undefined") setW(window.innerWidth || 0);
+    // A full-document navigation can remount RootLayout (e.g. when the Next.js
+    // router falls back to a reload). The splash is for the first visit in this
+    // tab, not for each remount or page transition.
+    try {
+      if (window.sessionStorage.getItem(SPLASH_SESSION_KEY) === "1") {
+        setVisible(false);
+        return;
+      }
+      window.sessionStorage.setItem(SPLASH_SESSION_KEY, "1");
+    } catch {
+      // Browsers can disable storage. Still show the splash normally.
+    }
+
+    setW(window.innerWidth || 0);
 
     // Play float animation for ~1.8s then start wipe
     const floatMs = 1800;

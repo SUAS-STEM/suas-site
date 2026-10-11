@@ -2,6 +2,11 @@
 @source "../internal";
 @plugin "@tailwindcss/typography";
 
+/* A hard navigation should not flash the first-visit splash before hydration. */
+html[data-suas-splash-seen="1"] .loader-overlay {
+  display: none !important;
+}
+
 :root {
   --primary: #189a9f;
   --primary-light: #4fd1d5;

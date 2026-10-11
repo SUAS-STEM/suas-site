@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Exo_2 } from "next/font/google";
 import "./globals.css";
@@ -33,6 +32,13 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/dronefav.svg" sizes="any" />
+        {/* Hide the server-rendered splash before paint on subsequent document
+            loads. The client Loader removes it once hydration completes. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(sessionStorage.getItem("suas-splash-seen-v1")==="1")document.documentElement.setAttribute("data-suas-splash-seen","1")}catch{}`,
+          }}
+        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,500,0,0"

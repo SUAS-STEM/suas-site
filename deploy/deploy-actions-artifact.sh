@@ -263,6 +263,31 @@ if [[ "$ok" != 1 ]]; then
 fi
 
 source /home/pi/deploy-lib.sh
+# Cloudflare's single-URL purge does not evict Next.js App Router variants such
+# as /team?_rsc=<hash>. Those have previously survived a release for days.
+# Prefix purge covers the HTML URL and every RSC variant, without evicting
+# /_next/static assets or /images/gallery originals.
+purge_suas_page_variants() {
+  local token_file="$HOME/.cloudflare-purge-token"
+  if [[ ! -r "$token_file" ]]; then
+    echo "[deploy] SUAS RSC cache purge skipped: missing Cloudflare token" >&2
+    return 1
+  fi
+  local token payload response
+  token=$(<"$token_file")
+  payload='{"prefixes":["suasstem.org/apply","suasstem.org/aircraft","suasstem.org/gallery","suasstem.org/sponsor","suasstem.org/ssgcs","suasstem.org/team","suasstem.org/stitch"]}'
+  response=$(curl -fsS --max-time 20 -X POST \
+    'https://api.cloudflare.com/client/v4/zones/261927ed64694e8857b81a0ee0ab6d8f/purge_cache' \
+    -H "Authorization: Bearer $token" \
+    -H 'Content-Type: application/json' \
+    --data "$payload") || return 1
+  if ! jq -e '.success == true' >/dev/null <<< "$response"; then
+    echo "[deploy] SUAS page/RSC prefix purge failed" >&2
+    return 1
+  fi
+  echo "[deploy] SUAS page/RSC variants purged"
+}
+purge_suas_page_variants || true
 PURGE_SPECS=("261927ed64694e8857b81a0ee0ab6d8f|https://suasstem.org/|https://suasstem.org/apply|https://suasstem.org/aircraft|https://suasstem.org/gallery|https://suasstem.org/sponsor|https://suasstem.org/ssgcs|https://suasstem.org/team|https://suasstem.org/api/images|https://suasstem.org/api/status|https://suasstem.org/stitch|https://suasstem.org/api/stitch/status|https://suasstem.org/api/stitch/output/preview")
 WARM_SPECS=("https://suasstem.org|/|/apply|/aircraft|/gallery|/sponsor|/ssgcs|/team|/api/images|/api/status")
 run_post_deploy_admin PURGE_SPECS WARM_SPECS
