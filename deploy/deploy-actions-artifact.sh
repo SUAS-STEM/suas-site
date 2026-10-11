@@ -262,6 +262,24 @@ if [[ "$ok" != 1 ]]; then
   exit 1
 fi
 
+# A healthy homepage is not enough: in October 2026 an application endpoint
+# disappeared from production even though / and /apply both returned 200.
+# Refuse and roll back any release missing either analytics ingestion or the
+# backward-compatible application redirect. The current CTA links directly
+# to Microsoft Forms, independently of analytics availability.
+apply_page="$(curl -fsS --max-time 10 -H 'Host: suasstem.org' http://127.0.0.1:3000/apply || true)"
+redirect_check="$(curl -sS --max-time 10 -H 'Host: suasstem.org' -o /dev/null -w '%{http_code} %{redirect_url}' 'http://127.0.0.1:3000/api/apply-click?source=deploy-smoke-test' || true)"
+analytics_check="$(curl -sS --max-time 10 -H 'Host: suasstem.org' -H 'Content-Type: application/json' --data '{"eventType":"invalid"}' -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/analytics || true)"
+if [[ "$apply_page" != *'https://forms.cloud.microsoft/r/M236hGQ0cv'* ]] \
+  || [[ "$redirect_check" != '302 https://forms.cloud.microsoft/r/M236hGQ0cv' ]] \
+  || [[ "$analytics_check" != 400 ]]; then
+  rollback
+  notify_failure_once "application" "SUAS application link or analytics smoke test failed; rolled back" "$run_id"
+  record_history "deploy_failed" "$run_id" "application or analytics smoke check failed; rolled back"
+  echo "Application/analytics smoke test failed: redirect=$redirect_check analytics=$analytics_check" >&2
+  exit 1
+fi
+
 source /home/pi/deploy-lib.sh
 # Cloudflare's single-URL purge does not evict Next.js App Router variants such
 # as /team?_rsc=<hash>. Those have previously survived a release for days.
