@@ -1,7 +1,6 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { APPLICATION_PAGE_URL } from "./team/data";
 import styles from "./home.module.css";
 
 export default function Home() {
@@ -29,7 +28,7 @@ export default function Home() {
                         </p>
 
                         <p className="text-gray-300 max-w-xl mb-8">
-                            SUAS@STEM is Tesla STEM High School's competition team for the
+                            SUAS@STEM is Tesla STEM High School&apos;s competition team for the
                             RoboNation{" "}
                             <a href="https://suas-competition.org/" target="blank">
                                 Student Unmanned Aerial Systems
@@ -45,13 +44,10 @@ export default function Home() {
                         </p>
 
                         <Link
-                            href={APPLICATION_PAGE_URL}
+                            href="/team"
                             className="join-modal-apply"
-                            data-analytics-event="apply_page_click"
-                            data-analytics-label="home-build-with-us"
-                            data-analytics-impression="apply_page_cta"
                         >
-                            <span>Build With Us</span>
+                            <span>Learn more</span>
                             <Image src="/images/icons/forward.svg" width={16} height={16} alt="" aria-hidden="true" />
                         </Link>
                     </div>

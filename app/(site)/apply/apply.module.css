@@ -18,6 +18,18 @@
   text-wrap: balance;
 }
 
+.closedNotice {
+  max-width: 42rem;
+  margin: 1.5rem 0 0;
+  padding: 0.95rem 1.15rem;
+  border-left: 3px solid #70dfe2;
+  border-radius: 0.35rem;
+  background: rgba(18, 87, 89, 0.18);
+  color: #e4f8f8;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
 .intro {
   max-width: 42rem;
   margin: 1.35rem 0 1rem;

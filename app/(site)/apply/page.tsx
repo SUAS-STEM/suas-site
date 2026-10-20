@@ -4,12 +4,15 @@ import { applicationSubsystemGroups, sectionCards } from "../team/data";
 import homeStyles from "../home.module.css";
 import styles from "./apply.module.css";
 import { ApplicationCTA } from "./ApplicationCTA";
+import { APPLICATIONS_OPEN, APPLICATION_SEASON } from "@/lib/applicationStatus";
 import { SubsystemExplorer } from "./SubsystemExplorer";
 
 export const metadata = {
-  title: "Apply | SUAS@STEM",
+  title: APPLICATIONS_OPEN ? "Apply | SUAS@STEM" : "Applications Closed | SUAS@STEM",
   description:
-    "Apply to help design, build, program, test, and fly an autonomous aircraft with SUAS@STEM.",
+    APPLICATIONS_OPEN
+      ? "Apply to help design, build, program, test, and fly an autonomous aircraft with SUAS@STEM."
+      : "Applications for SUAS@STEM are currently closed. Explore our subsystems and meet the team.",
 };
 
 export default function ApplyPage() {
@@ -29,24 +32,32 @@ export default function ApplyPage() {
       <section className={`flex flex-1 justify-center ${styles.heroSection}`}>
         <div className={homeStyles.heroGrid}>
           <div className={styles.heroCopy}>
-            <h1 className={styles.title}>Build With Us</h1>
+            <h1 className={styles.title}>{APPLICATIONS_OPEN ? "Build With Us" : "Applications Closed"}</h1>
+            {!APPLICATIONS_OPEN ? (
+              <p className={styles.closedNotice} role="status">
+                Applications for the {APPLICATION_SEASON} season are now closed. Thank you for your
+                interest in SUAS@STEM. Please check back for future opportunities.
+              </p>
+            ) : null}
             <p className={styles.intro}>
-              Join SUAS@STEM to design, build, program, test, and fly an autonomous aircraft for
+              SUAS@STEM students design, build, program, test, and fly an autonomous aircraft for
               the national Student Unmanned Aerial Systems competition. Work across airframe,
               avionics, embedded systems, autonomous flight, software, computer vision, and flight
               testing.
             </p>
             <div className={styles.actionGroup}>
-              <ApplicationCTA href={applicationFormUrl} />
+              {APPLICATIONS_OPEN ? <ApplicationCTA href={applicationFormUrl} /> : null}
               <Link href="/team" className={`${styles.primaryAction} ${styles.secondaryAction}`}>
                 Meet the Team
               </Link>
             </div>
-            <p className={styles.reassurance}>
-              First-time applications take about 45 minutes. Sharing additional experiences or
-              preparing optional supplemental materials may take longer. Current members renewing
-              their membership follow a shorter process.
-            </p>
+            {APPLICATIONS_OPEN ? (
+              <p className={styles.reassurance}>
+                First-time applications take about 45 minutes. Sharing additional experiences or
+                preparing optional supplemental materials may take longer. Current members renewing
+                their membership follow a shorter process.
+              </p>
+            ) : null}
           </div>
 
           <div className={homeStyles.heroPhoto}>
@@ -72,10 +83,10 @@ export default function ApplyPage() {
 
       <section className={styles.subsystems} aria-labelledby="subsystems-title">
         <h2 id="subsystems-title">Our subsystems</h2>
-        <SubsystemExplorer groups={subsystems} applicationFormUrl={applicationFormUrl} />
+        <SubsystemExplorer groups={subsystems} applicationFormUrl={APPLICATIONS_OPEN ? applicationFormUrl : null} />
       </section>
 
-      {formEmbedUrl ? (
+      {APPLICATIONS_OPEN && formEmbedUrl ? (
         <section id="application-form" className={styles.applicationForm} aria-label="Application form">
           <iframe src={formEmbedUrl} title="SUAS@STEM application" loading="lazy" />
         </section>

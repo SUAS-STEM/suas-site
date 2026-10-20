@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ReactElement } from "react";
 import { APPLICATION_PAGE_URL, DEFAULT_LINK_TEXT } from "./data";
+import { APPLICATIONS_OPEN, APPLICATION_SEASON } from "@/lib/applicationStatus";
 import { CardInfo, getSubsystemIcon } from "./types";
 
 export function JoinModal({
@@ -65,7 +66,7 @@ export function JoinModal({
                         <p className="join-modal-note">{card.note}</p>
                     </>
                 ) : null}
-                {!card.note || card.url ? (
+                {APPLICATIONS_OPEN && (!card.note || card.url) ? (
                     <>
                         <div style={{ height: "16px" }} />
                         <Link
@@ -79,6 +80,11 @@ export function JoinModal({
                             <Image src="/images/icons/forward.svg" width={16} height={16} alt="" aria-hidden="true" />
                         </Link>
                     </>
+                ) : null}
+                {!APPLICATIONS_OPEN && card.title.startsWith("Join ") ? (
+                    <p className="join-modal-note" role="status">
+                        Applications for the {APPLICATION_SEASON} season are closed.
+                    </p>
                 ) : null}
             </div>
         </div>

@@ -2,6 +2,7 @@ import Navbar from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import styles from "./SiteChrome.module.css";
+import { APPLICATIONS_OPEN } from "@/lib/applicationStatus";
 
 type SiteChromeProps = Readonly<{
   children: React.ReactNode;
@@ -12,7 +13,7 @@ type SiteChromeProps = Readonly<{
 export default function SiteChrome({ children, headerVariant = "site", showLogout }: SiteChromeProps) {
   return (
     <>
-      {headerVariant === "site" ? (
+      {headerVariant === "site" && APPLICATIONS_OPEN ? (
         <Link
           href="/apply"
           className={styles.applicationBanner}

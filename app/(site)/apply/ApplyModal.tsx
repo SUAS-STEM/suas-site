@@ -16,7 +16,7 @@ export function ApplyModal({
   title: string;
   isClosing: boolean;
   onClose: () => void;
-  applicationFormUrl: string;
+  applicationFormUrl: string | null;
 }) {
   const action = <><span>Apply now</span><Image src="/images/icons/forward.svg" width={16} height={16} alt="" aria-hidden="true" /></>;
 
@@ -63,7 +63,11 @@ export function ApplyModal({
           </div>
         ))}
         <div style={{ height: "16px" }} />
-        {applicationFormUrl.startsWith("/") ? (
+        {!applicationFormUrl ? (
+          <p className="join-modal-note" role="status">
+            Applications for the 2026-2027 season are closed.
+          </p>
+        ) : applicationFormUrl.startsWith("/") ? (
           <Link href={applicationFormUrl} className="join-modal-apply">{action}</Link>
         ) : (
           <a

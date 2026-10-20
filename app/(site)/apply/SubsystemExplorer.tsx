@@ -28,7 +28,7 @@ export function SubsystemExplorer({
   applicationFormUrl,
 }: {
   groups: SubsystemGroup[];
-  applicationFormUrl: string;
+  applicationFormUrl: string | null;
 }) {
   const [selectedSubsystem, setSelectedSubsystem] = useState<SelectedSubsystem | null>(null);
   const [isClosing, setIsClosing] = useState(false);
@@ -86,7 +86,7 @@ export function SubsystemExplorer({
       {selectedSubsystem ? (
         <ApplyModal
           cards={selectedSubsystem.group.cards}
-          title={`Join ${selectedSubsystem.group.title}`}
+          title={`${applicationFormUrl ? "Join" : "About"} ${selectedSubsystem.group.title}`}
           isClosing={isClosing}
           onClose={close}
           applicationFormUrl={applicationFormUrl}
