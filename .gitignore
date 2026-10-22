@@ -21,6 +21,7 @@
 /build
 public/images/gallery/thumbs/
 public/images/gallery/display/
+public/images/members/optimized/
 
 # misc
 .DS_Store
